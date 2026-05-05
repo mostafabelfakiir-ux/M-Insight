@@ -1,36 +1,17 @@
 @import "tailwindcss";
 
-@theme {
-  --color-brand:        #8b5cf6;
-  --color-brand-dim:    #6d28d9;
-  --color-surface:      #18181b;
-  --color-surface-2:    #27272a;
-  --color-surface-3:    #3f3f46;
-  --color-border:       #3f3f46;
-  --color-text-base:    #f4f4f5;
-  --color-text-muted:   #a1a1aa;
-  --color-positive:     #34d399;
-  --color-negative:     #f87171;
-}
+*, *::before, *::after { box-sizing: border-box; }
 
-:root {
-  --background: #09090b;
-  --foreground: #f4f4f5;
-}
-
-html {
-  background-color: #09090b;
-}
-
-body {
-  background-color: #09090b;
-  color: #f4f4f5;
-  font-family: var(--font-geist-sans), Arial, sans-serif;
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #f4f7fe;
+  color: #111827;
+  font-family: 'Inter', -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbar for dark theme */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #18181b; }
-::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #52525b; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }

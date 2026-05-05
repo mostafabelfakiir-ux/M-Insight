@@ -5,9 +5,9 @@ import dynamic from 'next/dynamic'
 import { db } from '@/lib/firebase'
 import { collection, getDocs, addDoc, updateDoc, doc, query, orderBy } from 'firebase/firestore'
 import {
-  LayoutDashboard, Wallet, CheckSquare, Calendar, Trophy,
-  Sun, Moon, Circle, CheckCircle2, Plus, RefreshCw, LogOut,
-  TrendingUp, ArrowUpRight,
+  LayoutDashboard, Wallet, CheckSquare, Settings, LogOut,
+  Circle, CheckCircle2, Plus, RefreshCw, TrendingUp, Trophy,
+  Calendar, DollarSign, Clock, Bell,
 } from 'lucide-react'
 
 const IncomeChart = dynamic(() => import('@/components/dashboard/IncomeChart'), { ssr: false })
@@ -17,7 +17,7 @@ interface FireTask        { id: string; title: string; status: 'pending' | 'done
 interface FireDeposit     { id: string; clientName: string; projectName?: string; totalPrice: number; depositPaid: number; date: string }
 interface FireAppointment { id: string; title: string; date: string; time: string }
 interface FireMilestone   { id: string; title: string; date: string; successTag: string }
-type View = 'dashboard' | 'finances' | 'tasks' | 'appointments' | 'milestones'
+type View = 'dashboard' | 'finances' | 'tasks' | 'settings'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function monthKey(d: string) {
@@ -28,9 +28,8 @@ function groupByMonth(finances: any[]) {
   const map: Record<string, { month: string; income: number; ads: number; profit: number; sortKey: string }> = {}
   finances.forEach(f => {
     if (!f.date) return
-    const d = new Date(f.date)
     const key = monthKey(f.date)
-    const lbl = d.toLocaleString('en-US', { month: 'short', year: '2-digit' })
+    const lbl = new Date(f.date).toLocaleString('en-US', { month: 'short' })
     if (!map[key]) map[key] = { month: lbl, income: 0, ads: 0, profit: 0, sortKey: key }
     if (f.type?.toLowerCase() === 'income') map[key].income += Number(f.amount) || 0
     if (f.type?.toLowerCase() === 'ads')    map[key].ads    += Number(f.amount) || 0
@@ -39,26 +38,22 @@ function groupByMonth(finances: any[]) {
   return Object.values(map).sort((a, b) => a.sortKey.localeCompare(b.sortKey))
 }
 function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 function dh(n: number) { return `${n.toLocaleString()} DH` }
 
-// ── nav items ─────────────────────────────────────────────────────────────────
-const NAV: { id: View; label: string; ar: string; Icon: React.FC<{ size?: number; style?: React.CSSProperties }> }[] = [
-  { id: 'dashboard',    label: 'Dashboard',      ar: 'الرئيسية',      Icon: LayoutDashboard },
-  { id: 'finances',     label: 'Finances',        ar: 'الماليات',      Icon: Wallet },
-  { id: 'tasks',        label: 'Tasks',           ar: 'المهام',         Icon: CheckSquare },
-  { id: 'appointments', label: 'Appointments',    ar: 'المواعيد',      Icon: Calendar },
-  { id: 'milestones',   label: 'Hall of Fame',    ar: 'قاعة الأبطال', Icon: Trophy },
+// ── nav config ────────────────────────────────────────────────────────────────
+const TEAL = '#0AB68B'
+const NAV: { id: View; label: string; Icon: React.FC<{ size?: number }> }[] = [
+  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { id: 'finances',  label: 'Finances',  Icon: Wallet },
+  { id: 'tasks',     label: 'Tasks',     Icon: CheckSquare },
+  { id: 'settings',  label: 'Settings',  Icon: Settings },
 ]
 
-const PURPLE = '#8B5CF6'
-const ORANGE = '#F97316'
-
-// ── main component ────────────────────────────────────────────────────────────
+// ── component ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const [view, setView] = useState<View>('dashboard')
-  const [dark, setDark] = useState(true)
 
   const [finances,     setFinances]     = useState<any[]>([])
   const [finLoading,   setFinLoading]   = useState(true)
@@ -95,14 +90,7 @@ export default function Home() {
   const [mlsTag,       setMlsTag]       = useState('')
   const [mlsBusy,      setMlsBusy]      = useState(false)
 
-  const [clock, setClock] = useState('')
-  useEffect(() => {
-    const tick = () => setClock(new Date().toLocaleTimeString('en-GB', { hour12: false }))
-    tick()
-    const t = setInterval(tick, 1000)
-    return () => clearInterval(t)
-  }, [])
-
+  // fetchers
   async function fetchFinances() {
     try {
       const snap = await getDocs(query(collection(db, 'finances'), orderBy('date', 'desc')))
@@ -142,78 +130,57 @@ export default function Home() {
     fetchFinances(); fetchTasks(); fetchDeposits(); fetchAppts(); fetchMilestones()
   }, [])
 
+  // handlers
   async function handleAddFinance(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (finBusy) return
-    setFinBusy(true)
+    e.preventDefault(); if (finBusy) return; setFinBusy(true)
     try {
       await addDoc(collection(db, 'finances'), { name: finName, amount: Number(finAmount), type: finType, date: new Date().toISOString() })
       setFinName(''); setFinAmount(''); setFinType('income')
       await fetchFinances()
-    } catch (e: any) { alert('Error: ' + e.message) }
-    finally { setFinBusy(false) }
+    } catch (e: any) { alert(e.message) } finally { setFinBusy(false) }
   }
   async function handleAddTask(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (!taskTitle.trim() || taskBusy) return
-    setTaskBusy(true)
+    e.preventDefault(); if (!taskTitle.trim() || taskBusy) return; setTaskBusy(true)
     try {
       await addDoc(collection(db, 'tasks'), { title: taskTitle.trim(), status: 'pending', createdAt: new Date().toISOString() })
-      setTaskTitle('')
-      await fetchTasks()
-    } catch (e: any) { alert('Error: ' + e.message) }
-    finally { setTaskBusy(false) }
+      setTaskTitle(''); await fetchTasks()
+    } catch (e: any) { alert(e.message) } finally { setTaskBusy(false) }
   }
   async function handleToggleTask(task: FireTask) {
     const next = task.status === 'pending' ? 'done' : 'pending'
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: next } : t))
-    try {
-      await updateDoc(doc(db, 'tasks', task.id), { status: next })
-    } catch {
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: task.status } : t))
-    }
+    try { await updateDoc(doc(db, 'tasks', task.id), { status: next }) }
+    catch { setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: task.status } : t)) }
   }
   async function handleAddDeposit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (depBusy) return
-    setDepBusy(true)
+    e.preventDefault(); if (depBusy) return; setDepBusy(true)
     try {
-      await addDoc(collection(db, 'deposits'), {
-        clientName: depClient.trim(), projectName: depProject.trim(),
-        totalPrice: Number(depTotal), depositPaid: Number(depPaid),
-        date: new Date().toISOString(),
-      })
+      await addDoc(collection(db, 'deposits'), { clientName: depClient.trim(), projectName: depProject.trim(), totalPrice: Number(depTotal), depositPaid: Number(depPaid), date: new Date().toISOString() })
       setDepClient(''); setDepProject(''); setDepTotal(''); setDepPaid('')
       await fetchDeposits()
-    } catch (e: any) { alert('Error: ' + e.message) }
-    finally { setDepBusy(false) }
+    } catch (e: any) { alert(e.message) } finally { setDepBusy(false) }
   }
   async function handleAddAppt(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (apptBusy) return
-    setApptBusy(true)
+    e.preventDefault(); if (apptBusy) return; setApptBusy(true)
     try {
       await addDoc(collection(db, 'appointments'), { title: apptTitle.trim(), date: apptDate, time: apptTime })
       setApptTitle(''); setApptDate(''); setApptTime('')
       await fetchAppts()
-    } catch (e: any) { alert('Error: ' + e.message) }
-    finally { setApptBusy(false) }
+    } catch (e: any) { alert(e.message) } finally { setApptBusy(false) }
   }
   async function handleAddMilestone(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (mlsBusy) return
-    setMlsBusy(true)
+    e.preventDefault(); if (mlsBusy) return; setMlsBusy(true)
     try {
-      await addDoc(collection(db, 'milestones'), { title: mlsTitle.trim(), date: mlsDate, successTag: mlsTag.trim() || 'First Win' })
+      await addDoc(collection(db, 'milestones'), { title: mlsTitle.trim(), date: mlsDate, successTag: mlsTag.trim() || 'Win' })
       setMlsTitle(''); setMlsDate(''); setMlsTag('')
       await fetchMilestones()
-    } catch (e: any) { alert('Error: ' + e.message) }
-    finally { setMlsBusy(false) }
+    } catch (e: any) { alert(e.message) } finally { setMlsBusy(false) }
   }
 
-  const income       = useMemo(() => finances.filter(f => f.type?.toLowerCase() === 'income').reduce((s, f) => s + (Number(f.amount) || 0), 0), [finances])
-  const ads          = useMemo(() => finances.filter(f => f.type?.toLowerCase() === 'ads').reduce((s, f) => s + (Number(f.amount) || 0), 0), [finances])
-  const netProfit    = income - ads
+  // derived
+  const income        = useMemo(() => finances.filter(f => f.type?.toLowerCase() === 'income').reduce((s, f) => s + (Number(f.amount) || 0), 0), [finances])
+  const ads           = useMemo(() => finances.filter(f => f.type?.toLowerCase() === 'ads').reduce((s, f)    => s + (Number(f.amount) || 0), 0), [finances])
+  const netProfit     = income - ads
   const monthlyGrowth = useMemo(() => {
     const now  = new Date()
     const cur  = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -229,316 +196,290 @@ export default function Home() {
   const totalDebt     = deposits.reduce((s, d) => s + Math.max(0, d.totalPrice - d.depositPaid), 0)
   const todayStr      = new Date().toISOString().slice(0, 10)
   const upcomingAppts = appts.filter(a => a.date >= todayStr)
+  const totalContracted = deposits.reduce((s, d) => s + d.totalPrice, 0)
 
-  // ── theme tokens ──────────────────────────────────────────────────────────
-  const T = dark ? {
-    bg:      '#0B0B10',
-    sidebar: '#0F0F18',
-    surface: '#16161F',
-    surface2:'#1C1C2A',
-    card:    '#191924',
-    border:  'rgba(255,255,255,0.07)',
-    text:    '#F3F4F6',
-    text2:   '#9CA3AF',
-    muted:   '#4B5563',
-    inputBg: 'rgba(255,255,255,0.04)',
-  } : {
-    bg:      '#EDF0F8',
-    sidebar: '#FFFFFF',
-    surface: '#FFFFFF',
-    surface2:'#F4F6FC',
-    card:    '#FFFFFF',
-    border:  'rgba(0,0,0,0.07)',
-    text:    '#111827',
-    text2:   '#6B7280',
-    muted:   '#9CA3AF',
-    inputBg: 'rgba(0,0,0,0.03)',
-  }
-  const sh = dark
-    ? '0 2px 8px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.2)'
-    : '0 1px 4px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04)'
-
-  if (finErr) {
-    return (
-      <div style={{ background: T.bg, fontFamily: "'Inter','Cairo',sans-serif" }} className="flex min-h-screen items-center justify-center p-10">
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 24, boxShadow: sh }} className="max-w-md w-full p-8 text-center">
-          <p className="mb-2 text-sm font-medium text-red-400">Firebase error · خطأ في الاتصال</p>
-          <p style={{ color: T.text2 }} className="text-xs">{finErr.message}</p>
-        </div>
+  if (finErr) return (
+    <div className="err-screen">
+      <div className="err-card">
+        <p className="err-title">Connection Error</p>
+        <p className="err-msg">{finErr.message}</p>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // ── render ────────────────────────────────────────────────────────────────
+  const viewLabel = NAV.find(n => n.id === view)?.label ?? 'Dashboard'
+
   return (
-    <div style={{ fontFamily: "'Inter','Cairo',sans-serif", background: T.bg, color: T.text, minHeight: '100vh' }}
-         className="flex">
+    <>
+      <div className="app-shell">
 
-      {/* ═══ SIDEBAR ═══ */}
-      <aside style={{ background: T.sidebar, borderRight: `1px solid ${T.border}`, width: 240, minHeight: '100vh' }}
-             className="hidden md:flex flex-col flex-shrink-0 sticky top-0 h-screen">
-
-        {/* brand */}
-        <div className="px-6 py-7">
-          <div className="flex items-center gap-3">
-            <div style={{ background: `linear-gradient(135deg, ${PURPLE}, ${ORANGE})`, width: 34, height: 34, borderRadius: 10 }}
-                 className="flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-sm font-bold">M</span>
-            </div>
+        {/* ═══════════ SIDEBAR ═══════════ */}
+        <aside className="sidebar">
+          {/* Brand */}
+          <div className="sb-brand">
+            <div className="sb-logo">M</div>
             <div>
-              <p style={{ color: T.text }} className="text-sm font-semibold tracking-tight leading-none">M-Insight</p>
-              <p style={{ color: T.muted }} className="text-[10px] mt-0.5">PRO · نظام الإدارة</p>
+              <div className="sb-name">M-Insight</div>
+              <div className="sb-sub">Business OS</div>
             </div>
           </div>
-        </div>
 
-        {/* nav */}
-        <nav className="flex-1 px-3 space-y-0.5">
-          {NAV.map(({ id, label, ar, Icon }) => {
-            const active = view === id
-            return (
+          <div className="sb-divider" />
+
+          {/* Nav section label */}
+          <div className="sb-section-label">NAVIGATION</div>
+
+          {/* Nav items */}
+          <nav className="sb-nav">
+            {NAV.map(({ id, label, Icon }) => (
               <button key={id} onClick={() => setView(id)}
-                style={{
-                  background: active ? (dark ? 'rgba(139,92,246,0.14)' : 'rgba(139,92,246,0.08)') : 'transparent',
-                  color: active ? PURPLE : T.text2,
-                  borderRadius: 14, width: '100%', textAlign: 'left',
-                  borderLeft: active ? `2px solid ${PURPLE}` : '2px solid transparent',
-                }}
-                className="flex items-center gap-3 px-4 py-3 transition-all hover:opacity-80">
-                <Icon size={16} style={{ color: active ? PURPLE : T.muted }} />
-                <div>
-                  <p className="text-[13px] font-medium leading-none">{label}</p>
-                  <p style={{ color: T.muted }} className="text-[10px] mt-0.5">{ar}</p>
-                </div>
+                className={`sb-item ${view === id ? 'sb-item--active' : ''}`}>
+                <Icon size={16} />
+                <span>{label}</span>
               </button>
-            )
-          })}
-        </nav>
+            ))}
+          </nav>
 
-        {/* bottom controls */}
-        <div className="px-4 pb-6 space-y-2">
-          <button onClick={() => setDark(d => !d)}
-            style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 14 }}
-            className="w-full flex items-center gap-3 px-4 py-3 transition-all hover:opacity-80">
-            {dark
-              ? <Sun size={15} style={{ color: ORANGE }} />
-              : <Moon size={15} style={{ color: PURPLE }} />}
-            <div>
-              <p style={{ color: T.text2 }} className="text-[12px] font-medium leading-none">{dark ? 'Light Mode' : 'Dark Mode'}</p>
-              <p style={{ color: T.muted }} className="text-[10px] mt-0.5">{dark ? 'وضع النهار' : 'وضع الليل'}</p>
-            </div>
-          </button>
+          <div className="sb-spacer" />
+          <div className="sb-divider" />
+
+          {/* Logout */}
           <button onClick={() => { if (confirm('Sign out?')) window.location.href = '/login' }}
-            style={{ color: T.muted }}
-            className="w-full flex items-center gap-3 px-4 py-2 text-[12px] transition-all hover:opacity-70">
-            <LogOut size={13} />
-            <span>Sign Out · خروج</span>
+            className="sb-item sb-logout">
+            <LogOut size={16} />
+            <span>Log out</span>
           </button>
-        </div>
-      </aside>
+        </aside>
 
-      {/* ═══ MAIN AREA ═══ */}
-      <div className="flex-1 flex flex-col min-w-0">
+        {/* ═══════════ MAIN AREA ═══════════ */}
+        <div className="main-wrap">
 
-        {/* top bar */}
-        <header style={{ background: T.sidebar, borderBottom: `1px solid ${T.border}` }}
-                className="flex items-center justify-between px-6 md:px-8 py-4 sticky top-0 z-10">
-          <div>
-            <p style={{ color: T.text }} className="text-base font-semibold leading-none">{NAV.find(n => n.id === view)?.label}</p>
-            <p style={{ color: T.muted }} className="text-[11px] mt-0.5">{NAV.find(n => n.id === view)?.ar}</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <span style={{ color: T.muted }} className="font-mono text-xs tabular-nums hidden md:block">{clock}</span>
-            <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 10 }} className="px-3 py-1.5">
-              <p style={{ color: T.muted }} className="text-[10px] font-medium">
-                {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
-              </p>
+          {/* Top bar */}
+          <header className="top-bar">
+            <div className="top-bar-left">
+              <h1 className="top-title">{viewLabel}</h1>
             </div>
-            {/* mobile theme toggle */}
-            <button onClick={() => setDark(d => !d)} className="md:hidden" style={{ color: T.muted }}>
-              {dark ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-          </div>
-        </header>
+            <div className="top-bar-right">
+              <span className="top-date">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              </span>
+              <button className="top-bell"><Bell size={16} /></button>
+              <div className="top-avatar">M</div>
+            </div>
+          </header>
 
-        {/* mobile bottom nav */}
-        <nav style={{ background: T.sidebar, borderTop: `1px solid ${T.border}` }}
-             className="md:hidden fixed bottom-0 left-0 right-0 z-20 flex">
-          {NAV.map(({ id, label, Icon }) => {
-            const active = view === id
-            return (
-              <button key={id} onClick={() => setView(id)}
-                style={{ color: active ? PURPLE : T.muted, flex: 1 }}
-                className="flex flex-col items-center gap-0.5 py-3 transition-all">
-                <Icon size={18} />
-                <span className="text-[9px] font-medium">{label}</span>
-              </button>
-            )
-          })}
-        </nav>
+          {/* Page content */}
+          <div className="page-body">
 
-        {/* content */}
-        <main style={{ background: T.bg }} className="flex-1 p-5 md:p-8 pb-24 md:pb-8 overflow-y-auto">
+            {/* ─── DASHBOARD ─── */}
+            {view === 'dashboard' && (
+              <div className="view-wrap">
 
-          {/* ─── DASHBOARD VIEW ─── */}
-          {view === 'dashboard' && (
-            <div className="space-y-7 max-w-[1200px]">
-              <div>
-                <h2 style={{ color: T.text }} className="text-xl md:text-2xl font-semibold">
-                  {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'} 👋
-                </h2>
-                <p style={{ color: T.text2 }} className="text-sm mt-1">Here's what's happening · ما يجري في عملك</p>
-              </div>
-
-              {/* stat cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {([
-                  { label: 'Revenue', ar: 'المداخيل',        val: finLoading ? null : income,              fmt: (v: number) => dh(v),      Icon: TrendingUp,    color: ORANGE,    soft: dark ? 'rgba(249,115,22,0.12)' : 'rgba(249,115,22,0.08)',   growth: monthlyGrowth },
-                  { label: 'Net Profit', ar: 'صافي الربح',   val: finLoading ? null : netProfit,           fmt: (v: number) => dh(v),      Icon: ArrowUpRight,  color: PURPLE,    soft: dark ? 'rgba(139,92,246,0.12)' : 'rgba(139,92,246,0.08)',   growth: null },
-                  { label: 'Open Tasks', ar: 'المهام المفتوحة', val: tasksLoading ? null : pendingTasks,   fmt: (v: number) => v.toString(), Icon: CheckSquare,  color: '#10B981', soft: dark ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.08)', growth: null },
-                  { label: 'Meetings', ar: 'المواعيد القادمة', val: apptsLoading ? null : upcomingAppts.length, fmt: (v: number) => v.toString(), Icon: Calendar, color: '#3B82F6', soft: dark ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.08)', growth: null },
-                ] as const).map(({ label, ar, val, fmt, Icon, color, soft, growth }) => (
-                  <div key={label} style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20 }} className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div style={{ background: soft, borderRadius: 12, padding: 10 }}>
+                {/* 4 stat cards */}
+                <div className="stats-row">
+                  {([
+                    { label: 'Total Revenue',    val: finLoading ? '…' : dh(income),         sub: monthlyGrowth !== null ? `${monthlyGrowth >= 0 ? '+' : ''}${monthlyGrowth}% vs last month` : 'All time',   up: monthlyGrowth === null || monthlyGrowth >= 0, Icon: TrendingUp,  color: TEAL,     bg: '#e6faf5' },
+                    { label: 'Net Profit',        val: finLoading ? '…' : dh(netProfit),       sub: `After ${dh(ads)} ad spend`,    up: netProfit >= 0,                                                     Icon: DollarSign,  color: '#6366F1', bg: '#eef2ff' },
+                    { label: 'Active Tasks',      val: tasksLoading ? '…' : String(pendingTasks), sub: `${doneTasks} completed`,       up: true,                                                             Icon: CheckSquare, color: '#F59E0B', bg: '#fef3c7' },
+                    { label: 'Contracted Value',  val: depLoading ? '…' : dh(totalContracted), sub: `${dh(totalDebt)} remaining`,   up: totalDebt < totalContracted,                                         Icon: Wallet,      color: '#3B82F6', bg: '#dbeafe' },
+                  ] as const).map(({ label, val, sub, up, Icon, color, bg }) => (
+                    <div key={label} className="stat-card">
+                      <div className="stat-icon" style={{ background: bg }}>
                         <Icon size={18} style={{ color }} />
                       </div>
-                      {growth !== null && growth !== undefined && (
-                        <span style={{ color: growth >= 0 ? '#10B981' : '#EF4444', fontSize: 11, fontWeight: 600 }}>
-                          {growth >= 0 ? '+' : ''}{growth}%
-                        </span>
+                      <div className="stat-body">
+                        <div className="stat-label">{label}</div>
+                        <div className="stat-value">{val}</div>
+                        <div className="stat-sub" style={{ color: up ? '#059669' : '#DC2626' }}>{sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Chart  +  Tasks — side by side */}
+                <div className="mid-row">
+
+                  {/* Revenue Bar Chart */}
+                  <div className="card chart-card">
+                    <div className="card-header">
+                      <div>
+                        <div className="card-title">Revenue Trend</div>
+                        <div className="card-sub">Monthly income</div>
+                      </div>
+                      <div className="chart-total">
+                        <span className="chart-total-val">{dh(income)}</span>
+                        {monthlyGrowth !== null && (
+                          <span className="chart-total-trend" style={{ color: monthlyGrowth >= 0 ? '#059669' : '#DC2626' }}>
+                            {monthlyGrowth >= 0 ? '↑' : '↓'} {Math.abs(monthlyGrowth)}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="chart-body">
+                      {finLoading ? (
+                        <div className="chart-placeholder">Loading data…</div>
+                      ) : chartData.length === 0 ? (
+                        <div className="chart-placeholder">No transactions yet — add your first payment</div>
+                      ) : (
+                        <IncomeChart data={chartData} />
                       )}
                     </div>
-                    <p style={{ color: T.text }} className="font-mono text-xl md:text-2xl font-semibold tabular-nums leading-none">
-                      {val === null ? '…' : fmt(val)}
-                    </p>
-                    <p style={{ color: T.text2 }} className="text-xs mt-1.5 font-medium">{label}</p>
-                    <p style={{ color: T.muted }} className="text-[10px]">{ar}</p>
                   </div>
-                ))}
-              </div>
 
-              {/* chart */}
-              <div style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 24 }} className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <p style={{ color: T.text }} className="text-sm font-semibold">Revenue Overview · الإيرادات</p>
-                    <p style={{ color: T.muted }} className="text-xs mt-0.5">Monthly income trend</p>
-                  </div>
-                  <span style={{ color: ORANGE }} className="font-mono text-lg font-semibold tabular-nums">{dh(income)}</span>
-                </div>
-                {finLoading ? (
-                  <div style={{ height: 180 }} className="flex items-center justify-center">
-                    <p style={{ color: T.muted }} className="text-xs animate-pulse">Loading…</p>
-                  </div>
-                ) : chartData.length === 0 ? (
-                  <div style={{ height: 180 }} className="flex items-center justify-center">
-                    <p style={{ color: T.muted }} className="text-xs">No data yet · لا بيانات</p>
-                  </div>
-                ) : <IncomeChart data={chartData} />}
-              </div>
-
-              {/* projects quick view */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p style={{ color: T.text }} className="text-sm font-semibold">Active Projects · المشاريع</p>
-                    <p style={{ color: T.muted }} className="text-xs mt-0.5">Remaining: <span style={{ color: ORANGE }}>{dh(totalDebt)}</span></p>
-                  </div>
-                  <button onClick={() => setView('finances')} style={{ color: PURPLE }} className="text-xs font-medium hover:opacity-70 transition-opacity">
-                    View all →
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {depLoading ? (
-                    [1,2].map(i => <div key={i} style={{ background: T.card, height: 88, borderRadius: 18 }} className="animate-pulse" />)
-                  ) : deposits.length === 0 ? (
-                    <p style={{ color: T.muted }} className="text-sm col-span-2 py-6 text-center">No projects yet</p>
-                  ) : deposits.map(d => {
-                    const rem = Math.max(0, d.totalPrice - d.depositPaid)
-                    const pct = Math.min(100, (d.depositPaid / d.totalPrice) * 100)
-                    const sc  = rem === 0 ? '#10B981' : d.depositPaid === 0 ? '#EF4444' : ORANGE
-                    const sl  = rem === 0 ? 'Paid · مدفوع' : d.depositPaid === 0 ? 'Pending · معلّق' : 'Partial · جزئي'
-                    return (
-                      <div key={d.id} style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20 }} className="p-5">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <p style={{ color: T.text }} className="text-sm font-semibold">{d.clientName}</p>
-                            {d.projectName && <p style={{ color: T.muted }} className="text-[11px] mt-0.5">{d.projectName}</p>}
-                          </div>
-                          <span style={{ color: sc, background: `${sc}18`, borderRadius: 8, fontSize: 10, fontWeight: 600, padding: '3px 9px' }}>{sl}</span>
-                        </div>
-                        <div style={{ background: T.border, borderRadius: 4, height: 4, overflow: 'hidden' }} className="mb-3">
-                          <div style={{ width: `${pct}%`, background: sc, height: '100%', borderRadius: 4 }} />
-                        </div>
-                        <div className="flex justify-between text-[11px]">
-                          <span style={{ color: T.text2 }}>Paid: <strong style={{ color: T.text }}>{dh(d.depositPaid)}</strong></span>
-                          <span style={{ color: T.text2 }}>Total: <strong style={{ color: T.text }}>{dh(d.totalPrice)}</strong></span>
-                          {rem > 0 && <span style={{ color: ORANGE }} className="font-semibold">{dh(rem)} left</span>}
-                        </div>
+                  {/* To-Do / Tasks */}
+                  <div className="card tasks-card">
+                    <div className="card-header">
+                      <div>
+                        <div className="card-title">To-Do List</div>
+                        <div className="card-sub">{pendingTasks} pending · {doneTasks} done</div>
                       </div>
-                    )
-                  })}
+                      <button onClick={() => setView('tasks')} className="link-btn">All tasks →</button>
+                    </div>
+
+                    {/* Inline add */}
+                    <form onSubmit={handleAddTask} className="task-add-form">
+                      <input
+                        required value={taskTitle} onChange={e => setTaskTitle(e.target.value)}
+                        placeholder="New task…" className="task-input"
+                      />
+                      <button type="submit" disabled={taskBusy} className="task-add-btn">
+                        <Plus size={14} />
+                      </button>
+                    </form>
+
+                    {/* Task list */}
+                    <div className="task-list">
+                      {tasksLoading ? (
+                        <div className="task-empty">Loading…</div>
+                      ) : tasks.length === 0 ? (
+                        <div className="task-empty">No tasks yet. Add one above.</div>
+                      ) : (
+                        <>
+                          {tasks.filter(t => t.status === 'pending').map(t => (
+                            <button key={t.id} onClick={() => handleToggleTask(t)} className="task-row">
+                              <div className="task-circle" />
+                              <span className="task-text">{t.title}</span>
+                              <span className="task-badge task-badge--pending">Pending</span>
+                            </button>
+                          ))}
+                          {tasks.filter(t => t.status === 'done').map(t => (
+                            <button key={t.id} onClick={() => handleToggleTask(t)} className="task-row task-row--done">
+                              <CheckCircle2 size={16} style={{ color: TEAL, flexShrink: 0 }} />
+                              <span className="task-text task-text--done">{t.title}</span>
+                              <span className="task-badge task-badge--done">Done</span>
+                            </button>
+                          ))}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Progress footer */}
+                    {tasks.length > 0 && (
+                      <div className="task-footer">
+                        <span>{tasks.length} total</span>
+                        <div className="task-progress">
+                          <div className="task-progress-fill"
+                            style={{ width: `${(doneTasks / tasks.length) * 100}%` }} />
+                        </div>
+                        <span>{Math.round((doneTasks / tasks.length) * 100)}%</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* ─── FINANCES VIEW ─── */}
-          {view === 'finances' && (
-            <div className="space-y-7 max-w-[1200px]">
-
-              {/* summary strip */}
-              <div className="grid grid-cols-3 gap-4">
-                {([
-                  { label: 'Total Revenue', ar: 'إجمالي المداخيل', val: finLoading ? '…' : dh(income),     color: ORANGE },
-                  { label: 'Net Profit',    ar: 'صافي الربح',       val: finLoading ? '…' : dh(netProfit),  color: netProfit >= 0 ? PURPLE : '#EF4444' },
-                  { label: 'Ads Spend',     ar: 'الإعلانات',        val: finLoading ? '…' : dh(ads),        color: T.text2 },
-                ] as const).map(({ label, ar, val, color }) => (
-                  <div key={label} style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20 }} className="p-5">
-                    <p style={{ color: T.muted }} className="text-[10px] font-medium uppercase tracking-wider">{label}</p>
-                    <p style={{ color: T.muted }} className="text-[9px] mt-0.5 mb-3">{ar}</p>
-                    <p style={{ color }} className="font-mono text-lg md:text-xl font-semibold tabular-nums">{val}</p>
+                {/* Client Projects */}
+                <div className="card projects-card">
+                  <div className="card-header">
+                    <div>
+                      <div className="card-title">Client Projects</div>
+                      <div className="card-sub">Remaining owed: <strong style={{ color: '#F59E0B' }}>{dh(totalDebt)}</strong></div>
+                    </div>
+                    <button onClick={() => setView('finances')} className="link-btn">Finances →</button>
                   </div>
-                ))}
-              </div>
-
-              {/* ledger + add form */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <div className="flex items-center justify-between mb-4">
-                    <p style={{ color: T.text }} className="text-sm font-semibold">Transactions · سجل المعاملات</p>
-                    <button onClick={fetchFinances} style={{ color: T.muted }} className="hover:opacity-70 transition-opacity">
-                      <RefreshCw size={14} />
-                    </button>
+                  <div className="projects-grid">
+                    {depLoading ? (
+                      <div className="card-sub">Loading…</div>
+                    ) : deposits.length === 0 ? (
+                      <div className="card-sub">No projects yet</div>
+                    ) : deposits.map(d => {
+                      const rem = Math.max(0, d.totalPrice - d.depositPaid)
+                      const pct = d.totalPrice > 0 ? Math.min(100, (d.depositPaid / d.totalPrice) * 100) : 0
+                      const sc  = rem === 0 ? TEAL : d.depositPaid === 0 ? '#EF4444' : '#F59E0B'
+                      const sl  = rem === 0 ? 'Paid' : d.depositPaid === 0 ? 'Pending' : 'Partial'
+                      return (
+                        <div key={d.id} className="project-item">
+                          <div className="project-header">
+                            <div>
+                              <div className="project-name">{d.clientName}</div>
+                              {d.projectName && <div className="project-sub">{d.projectName}</div>}
+                            </div>
+                            <span className="project-badge" style={{ color: sc, background: `${sc}18` }}>{sl}</span>
+                          </div>
+                          <div className="project-bar-track">
+                            <div className="project-bar-fill" style={{ width: `${pct}%`, background: sc }} />
+                          </div>
+                          <div className="project-amounts">
+                            <span>{dh(d.depositPaid)} paid</span>
+                            <span style={{ color: sc, fontWeight: 600 }}>
+                              {rem > 0 ? `${dh(rem)} left` : '✓ Complete'}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                  <div style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20, overflow: 'hidden' }}>
-                    <table className="w-full">
+                </div>
+
+              </div>
+            )}
+
+            {/* ─── FINANCES ─── */}
+            {view === 'finances' && (
+              <div className="view-wrap">
+
+                <div className="stats-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                  {([
+                    { label: 'Total Revenue', val: finLoading ? '…' : dh(income),    color: TEAL },
+                    { label: 'Net Profit',    val: finLoading ? '…' : dh(netProfit), color: netProfit >= 0 ? '#059669' : '#EF4444' },
+                    { label: 'Ads Spend',     val: finLoading ? '…' : dh(ads),       color: '#6B7280' },
+                  ] as const).map(({ label, val, color }) => (
+                    <div key={label} className="card" style={{ padding: '20px 22px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>{label}</div>
+                      <div style={{ fontSize: 22, fontWeight: 700, color }}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="two-col-grid">
+                  {/* Ledger */}
+                  <div className="card" style={{ overflow: 'hidden' }}>
+                    <div className="card-header" style={{ padding: '18px 22px', borderBottom: '1px solid #f3f4f6' }}>
+                      <div className="card-title">Transactions</div>
+                      <button onClick={fetchFinances} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><RefreshCw size={14} /></button>
+                    </div>
+                    <table className="ledger-table">
                       <thead>
-                        <tr style={{ borderBottom: `1px solid ${T.border}` }}>
+                        <tr>
                           {['Description', 'Type', 'Date', 'Amount'].map(h => (
-                            <th key={h} style={{ color: T.muted }} className="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider">{h}</th>
+                            <th key={h}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {finLoading ? (
-                          <tr><td colSpan={4} style={{ color: T.muted }} className="px-5 py-12 text-center text-xs animate-pulse">Loading…</td></tr>
+                          <tr><td colSpan={4} className="table-empty">Loading…</td></tr>
                         ) : finances.length === 0 ? (
-                          <tr><td colSpan={4} style={{ color: T.muted }} className="px-5 py-14 text-center text-xs">No records · لا سجلات</td></tr>
-                        ) : finances.map((f, i) => (
-                          <tr key={f.id} style={{ borderBottom: i < finances.length - 1 ? `1px solid ${T.border}` : 'none' }}>
-                            <td style={{ color: T.text }} className="px-5 py-3.5 text-xs font-medium">{f.name || 'Entry'}</td>
-                            <td className="px-5 py-3.5">
-                              <span style={{
-                                color: f.type?.toLowerCase() === 'income' ? ORANGE : '#EF4444',
-                                background: f.type?.toLowerCase() === 'income' ? `${ORANGE}18` : 'rgba(239,68,68,0.12)',
-                                borderRadius: 7, fontSize: 10, fontWeight: 600, padding: '2px 8px',
-                              }}>{f.type ?? '—'}</span>
+                          <tr><td colSpan={4} className="table-empty">No transactions yet</td></tr>
+                        ) : finances.map(f => (
+                          <tr key={f.id}>
+                            <td style={{ color: '#111827', fontWeight: 500 }}>{f.name || 'Entry'}</td>
+                            <td>
+                              <span className={`type-badge ${f.type?.toLowerCase() === 'income' ? 'type-badge--income' : 'type-badge--ads'}`}>
+                                {f.type ?? '—'}
+                              </span>
                             </td>
-                            <td style={{ color: T.muted }} className="px-5 py-3.5 text-[11px] tabular-nums">{f.date ? fmtDate(f.date) : '—'}</td>
-                            <td style={{ color: f.type?.toLowerCase() === 'income' ? T.text : '#EF4444' }}
-                                className="px-5 py-3.5 text-right text-sm font-semibold tabular-nums">
+                            <td style={{ color: '#9CA3AF' }}>{f.date ? fmtDate(f.date) : '—'}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: f.type?.toLowerCase() === 'income' ? TEAL : '#EF4444' }}>
                               {f.type?.toLowerCase() === 'income' ? '+' : '−'}{dh(Number(f.amount))}
                             </td>
                           </tr>
@@ -546,323 +487,364 @@ export default function Home() {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Add transaction */}
+                  <div>
+                    <div className="card" style={{ padding: '20px 22px', marginBottom: 18 }}>
+                      <div className="card-title" style={{ marginBottom: 16 }}>Add Transaction</div>
+                      <form onSubmit={handleAddFinance} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <FInput label="Description" placeholder="e.g. Client payment" value={finName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFinName(e.target.value)} required />
+                        <FInput label="Amount (DH)" placeholder="0" type="number" value={finAmount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFinAmount(e.target.value)} required />
+                        <div>
+                          <label className="finput-label">Type</label>
+                          <select value={finType} onChange={e => setFinType(e.target.value)} className="finput">
+                            <option value="income">Income</option>
+                            <option value="ads">Ads Spend</option>
+                          </select>
+                        </div>
+                        <button type="submit" disabled={finBusy} className="primary-btn">
+                          {finBusy ? 'Saving…' : '+ Add Entry'}
+                        </button>
+                      </form>
+                    </div>
+                  </div>
                 </div>
 
-                {/* add finance form */}
-                <div>
-                  <p style={{ color: T.text }} className="text-sm font-semibold mb-4">New Entry · إدخال جديد</p>
-                  <div style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20 }} className="p-5">
-                    <form onSubmit={handleAddFinance} className="space-y-3">
-                      <GInput T={T} label="Description" placeholder="e.g. Client payment…" value={finName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFinName(e.target.value)} required />
-                      <GInput T={T} label="Amount (DH)" placeholder="0" type="number" value={finAmount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFinAmount(e.target.value)} required />
-                      <div>
-                        <label style={{ color: T.muted }} className="block text-[10px] font-medium uppercase tracking-wider mb-1.5">Type</label>
-                        <select value={finType} onChange={e => setFinType(e.target.value)}
-                          style={{ background: T.inputBg, border: `1px solid ${T.border}`, color: T.text, borderRadius: 10, fontSize: 13, padding: '8px 12px', width: '100%', outline: 'none', fontFamily: 'inherit' }}>
-                          <option value="income" style={{ background: T.surface }}>Income</option>
-                          <option value="ads"    style={{ background: T.surface }}>Ads Spend</option>
-                        </select>
+                {/* Deposits */}
+                <div className="card" style={{ overflow: 'hidden' }}>
+                  <div className="card-header" style={{ padding: '18px 22px', borderBottom: '1px solid #f3f4f6' }}>
+                    <div>
+                      <div className="card-title">Client Deposits</div>
+                      <div className="card-sub">Remaining: <strong style={{ color: '#F59E0B' }}>{dh(totalDebt)}</strong></div>
+                    </div>
+                  </div>
+                  <div style={{ padding: '18px 22px' }}>
+                    <div className="projects-grid" style={{ marginBottom: deposits.length > 0 ? 20 : 0 }}>
+                      {depLoading ? <p className="card-sub">Loading…</p> : deposits.map(d => {
+                        const rem = Math.max(0, d.totalPrice - d.depositPaid)
+                        const pct = d.totalPrice > 0 ? Math.min(100, (d.depositPaid / d.totalPrice) * 100) : 0
+                        const sc  = rem === 0 ? TEAL : d.depositPaid === 0 ? '#EF4444' : '#F59E0B'
+                        const sl  = rem === 0 ? 'Paid' : d.depositPaid === 0 ? 'Pending' : 'Partial'
+                        return (
+                          <div key={d.id} className="project-item">
+                            <div className="project-header">
+                              <div>
+                                <div className="project-name">{d.clientName}</div>
+                                {d.projectName && <div className="project-sub">{d.projectName}</div>}
+                              </div>
+                              <span className="project-badge" style={{ color: sc, background: `${sc}18` }}>{sl}</span>
+                            </div>
+                            <div className="project-bar-track">
+                              <div className="project-bar-fill" style={{ width: `${pct}%`, background: sc }} />
+                            </div>
+                            <div className="project-amounts">
+                              <span>Paid: {dh(d.depositPaid)}</span>
+                              <span>Total: {dh(d.totalPrice)}</span>
+                              {rem > 0 && <span style={{ color: '#F59E0B', fontWeight: 600 }}>{dh(rem)} left</span>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <form onSubmit={handleAddDeposit} className="deposit-form">
+                      <FInput label="Client" placeholder="Name" value={depClient} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDepClient(e.target.value)} required />
+                      <FInput label="Project" placeholder="Project" value={depProject} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDepProject(e.target.value)} />
+                      <FInput label="Total (DH)" placeholder="0" type="number" value={depTotal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDepTotal(e.target.value)} required />
+                      <FInput label="Deposit (DH)" placeholder="0" type="number" value={depPaid} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDepPaid(e.target.value)} required />
+                      <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                        <button type="submit" disabled={depBusy} className="primary-btn" style={{ background: '#F59E0B' }}>
+                          {depBusy ? '…' : '+ Add'}
+                        </button>
                       </div>
-                      <button type="submit" disabled={finBusy}
-                        style={{ background: `linear-gradient(135deg, ${PURPLE}, #6D28D9)`, borderRadius: 12, color: '#fff', width: '100%', padding: '10px', fontSize: 13, fontWeight: 600, opacity: finBusy ? 0.5 : 1, cursor: finBusy ? 'not-allowed' : 'pointer' }}
-                        className="transition-all hover:opacity-90 active:scale-[0.98] mt-1">
-                        {finBusy ? 'Processing…' : '+ Add Entry'}
-                      </button>
                     </form>
                   </div>
                 </div>
+
               </div>
+            )}
 
-              {/* deposits panel */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p style={{ color: T.text }} className="text-sm font-semibold">Client Deposits · التسبيقات</p>
-                    <p style={{ color: T.muted }} className="text-xs mt-0.5">Remaining owed: <span style={{ color: ORANGE }}>{dh(totalDebt)}</span></p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-                  {depLoading ? (
-                    [1,2,3,4].map(i => <div key={i} style={{ background: T.card, height: 130, borderRadius: 20 }} className="animate-pulse" />)
-                  ) : deposits.length === 0 ? (
-                    <p style={{ color: T.muted }} className="col-span-4 text-sm text-center py-8">No deposits yet</p>
-                  ) : deposits.map(d => {
-                    const rem = Math.max(0, d.totalPrice - d.depositPaid)
-                    const pct = Math.min(100, (d.depositPaid / d.totalPrice) * 100)
-                    const sc  = rem === 0 ? '#10B981' : d.depositPaid === 0 ? '#EF4444' : ORANGE
-                    return (
-                      <div key={d.id} style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20 }} className="p-5">
-                        <div className="flex justify-between items-start mb-2">
-                          <p style={{ color: T.text }} className="text-sm font-semibold leading-snug">{d.clientName}</p>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: sc, flexShrink: 0, marginTop: 4 }} />
-                        </div>
-                        {d.projectName && <p style={{ color: T.muted }} className="text-[11px] mb-3">{d.projectName}</p>}
-                        <div style={{ background: T.border, borderRadius: 4, height: 4, overflow: 'hidden' }} className="mb-3">
-                          <div style={{ width: `${pct}%`, background: sc, height: '100%', borderRadius: 4 }} />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[11px]">
-                            <span style={{ color: T.muted }}>Total</span>
-                            <span style={{ color: T.text }} className="font-medium">{dh(d.totalPrice)}</span>
-                          </div>
-                          <div className="flex justify-between text-[11px]">
-                            <span style={{ color: T.muted }}>Paid</span>
-                            <span style={{ color: '#10B981' }} className="font-medium">{dh(d.depositPaid)}</span>
-                          </div>
-                          {rem > 0 && (
-                            <div className="flex justify-between text-[11px]">
-                              <span style={{ color: T.muted }}>Remaining</span>
-                              <span style={{ color: ORANGE }} className="font-medium">{dh(rem)}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* add deposit form */}
-                <div style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20 }} className="p-5">
-                  <p style={{ color: T.text }} className="text-sm font-semibold mb-4">Add Project · أضف مشروعاً</p>
-                  <form onSubmit={handleAddDeposit} className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <GInput T={T} label="Client Name" placeholder="Client…" value={depClient} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDepClient(e.target.value)} required />
-                    <GInput T={T} label="Project" placeholder="Project name…" value={depProject} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDepProject(e.target.value)} />
-                    <GInput T={T} label="Total (DH)" placeholder="0" type="number" value={depTotal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDepTotal(e.target.value)} required />
-                    <GInput T={T} label="Deposit (DH)" placeholder="0" type="number" value={depPaid} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDepPaid(e.target.value)} required />
-                    <div className="col-span-2 md:col-span-4 flex justify-end">
-                      <button type="submit" disabled={depBusy}
-                        style={{ background: ORANGE, borderRadius: 12, color: '#fff', padding: '9px 24px', fontSize: 13, fontWeight: 600, opacity: depBusy ? 0.5 : 1, cursor: depBusy ? 'not-allowed' : 'pointer' }}
-                        className="transition-all hover:opacity-90 active:scale-[0.98]">
-                        {depBusy ? 'Saving…' : '+ Add Project'}
-                      </button>
+            {/* ─── TASKS ─── */}
+            {view === 'tasks' && (
+              <div className="view-wrap">
+                <div className="stats-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                  {([
+                    { label: 'Total',       val: String(tasks.length),   color: '#111827' },
+                    { label: 'In Progress', val: String(pendingTasks),   color: '#F59E0B' },
+                    { label: 'Completed',   val: String(doneTasks),      color: TEAL },
+                  ] as const).map(({ label, val, color }) => (
+                    <div key={label} className="card" style={{ padding: '20px 22px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>{label}</div>
+                      <div style={{ fontSize: 28, fontWeight: 700, color }}>{tasksLoading ? '…' : val}</div>
                     </div>
+                  ))}
+                </div>
+
+                <div className="card" style={{ padding: '18px 22px', marginBottom: 16 }}>
+                  <form onSubmit={handleAddTask} style={{ display: 'flex', gap: 10 }}>
+                    <input required value={taskTitle} onChange={e => setTaskTitle(e.target.value)}
+                      placeholder="Add a new task and press Enter…" className="finput" style={{ flex: 1 }} />
+                    <button type="submit" disabled={taskBusy} className="primary-btn" style={{ flexShrink: 0 }}>
+                      <Plus size={14} style={{ marginRight: 6 }} /> Add Task
+                    </button>
                   </form>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* ─── TASKS VIEW ─── */}
-          {view === 'tasks' && (
-            <div className="space-y-6 max-w-[900px]">
-              <div className="grid grid-cols-3 gap-4">
-                {([
-                  { label: 'Total', ar: 'الكل',         val: tasks.length,   color: T.text },
-                  { label: 'In Progress', ar: 'قيد التنفيذ', val: pendingTasks, color: ORANGE },
-                  { label: 'Completed', ar: 'مكتملة',   val: doneTasks,      color: '#10B981' },
-                ] as const).map(({ label, ar, val, color }) => (
-                  <div key={label} style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20 }} className="p-5">
-                    <p style={{ color: T.muted }} className="text-[10px] font-medium uppercase tracking-wider">{label}</p>
-                    <p style={{ color: T.muted }} className="text-[9px] mt-0.5 mb-3">{ar}</p>
-                    <p style={{ color }} className="font-mono text-2xl font-semibold">{tasksLoading ? '…' : val}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20 }} className="p-5">
-                <form onSubmit={handleAddTask} className="flex gap-3">
-                  <input required value={taskTitle} onChange={e => setTaskTitle(e.target.value)}
-                    placeholder="Add a new task… · أضف مهمة"
-                    style={{ background: T.inputBg, border: `1px solid ${T.border}`, color: T.text, borderRadius: 12, fontSize: 13, padding: '10px 14px', flex: 1, outline: 'none', fontFamily: 'inherit' }} />
-                  <button type="submit" disabled={taskBusy}
-                    style={{ background: PURPLE, borderRadius: 12, color: '#fff', padding: '10px 20px', fontSize: 13, fontWeight: 600, opacity: taskBusy ? 0.5 : 1, flexShrink: 0, cursor: taskBusy ? 'not-allowed' : 'pointer' }}
-                    className="flex items-center gap-2 transition-all hover:opacity-90 active:scale-[0.98]">
-                    <Plus size={14} /> Add
-                  </button>
-                </form>
-              </div>
-
-              <div style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20, overflow: 'hidden' }}>
-                {tasksLoading ? (
-                  <div className="space-y-2 p-4 animate-pulse">
-                    {[1,2,3].map(i => <div key={i} style={{ background: T.border, height: 52, borderRadius: 12 }} />)}
-                  </div>
-                ) : tasks.length === 0 ? (
-                  <p style={{ color: T.muted }} className="text-sm text-center py-14">No tasks yet · لا مهام بعد</p>
-                ) : tasks.map((task, i) => (
-                  <button key={task.id} onClick={() => handleToggleTask(task)}
-                    style={{ borderBottom: i < tasks.length - 1 ? `1px solid ${T.border}` : 'none', width: '100%', background: 'transparent', cursor: 'pointer' }}
-                    className="flex items-center gap-4 px-6 py-4 text-left transition-all hover:bg-white/[0.02]">
-                    {task.status === 'done'
-                      ? <CheckCircle2 size={18} style={{ color: PURPLE, flexShrink: 0 }} />
-                      : <Circle size={18} style={{ color: T.muted, flexShrink: 0 }} />}
-                    <span style={{ color: task.status === 'done' ? T.muted : T.text, flex: 1 }}
-                          className={`text-sm ${task.status === 'done' ? 'line-through' : ''}`}>
-                      {task.title}
-                    </span>
-                    <span style={{
-                      color: task.status === 'done' ? '#10B981' : ORANGE,
-                      background: task.status === 'done' ? 'rgba(16,185,129,0.1)' : `${ORANGE}15`,
-                      borderRadius: 8, fontSize: 10, fontWeight: 600, padding: '3px 9px',
-                    }}>
-                      {task.status === 'done' ? 'Done · مكتمل' : 'Pending · قيد التنفيذ'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ─── APPOINTMENTS VIEW ─── */}
-          {view === 'appointments' && (
-            <div className="space-y-6 max-w-[900px]">
-              <div style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20 }} className="p-6">
-                <p style={{ color: T.text }} className="text-sm font-semibold mb-4">Schedule Appointment · حدد موعداً</p>
-                <form onSubmit={handleAddAppt} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <GInput T={T} label="Title" placeholder="Meeting name…" value={apptTitle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApptTitle(e.target.value)} required />
-                  <GInput T={T} label="Date" type="date" value={apptDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApptDate(e.target.value)} required />
-                  <GInput T={T} label="Time" type="time" value={apptTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApptTime(e.target.value)} required />
-                  <div className="md:col-span-3 flex justify-end">
-                    <button type="submit" disabled={apptBusy}
-                      style={{ background: `linear-gradient(135deg, ${PURPLE}, #6D28D9)`, borderRadius: 12, color: '#fff', padding: '10px 24px', fontSize: 13, fontWeight: 600, opacity: apptBusy ? 0.5 : 1, cursor: apptBusy ? 'not-allowed' : 'pointer' }}
-                      className="transition-all hover:opacity-90 active:scale-[0.98]">
-                      {apptBusy ? 'Saving…' : '+ Schedule'}
+                <div className="card" style={{ overflow: 'hidden' }}>
+                  {tasksLoading ? (
+                    <div className="task-empty" style={{ padding: 40 }}>Loading…</div>
+                  ) : tasks.length === 0 ? (
+                    <div className="task-empty" style={{ padding: 40 }}>No tasks yet. Add one above.</div>
+                  ) : tasks.map((t, i) => (
+                    <button key={t.id} onClick={() => handleToggleTask(t)}
+                      className={`task-row task-row--full ${t.status === 'done' ? 'task-row--done' : ''}`}
+                      style={{ borderBottom: i < tasks.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                      {t.status === 'done'
+                        ? <CheckCircle2 size={17} style={{ color: TEAL, flexShrink: 0 }} />
+                        : <Circle size={17} style={{ color: '#9CA3AF', flexShrink: 0 }} />}
+                      <span className={`task-text ${t.status === 'done' ? 'task-text--done' : ''}`}>{t.title}</span>
+                      <span className={`task-badge ${t.status === 'done' ? 'task-badge--done' : 'task-badge--pending'}`}>
+                        {t.status === 'done' ? 'Completed' : 'In Progress'}
+                      </span>
                     </button>
-                  </div>
-                </form>
+                  ))}
+                </div>
               </div>
+            )}
 
-              <div>
-                <p style={{ color: T.text }} className="text-sm font-semibold mb-3">
-                  All Appointments · المواعيد <span style={{ color: T.muted }} className="text-xs font-normal">({upcomingAppts.length} upcoming)</span>
-                </p>
-                <div className="space-y-3">
-                  {apptsLoading ? (
-                    [1,2,3].map(i => <div key={i} style={{ background: T.card, height: 72, borderRadius: 16 }} className="animate-pulse" />)
-                  ) : appts.length === 0 ? (
-                    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 20 }} className="text-center py-12">
-                      <p style={{ color: T.muted }} className="text-sm">No appointments yet · لا مواعيد</p>
-                    </div>
-                  ) : appts.map(a => {
-                    const isPast  = a.date < todayStr
-                    const isToday = a.date === todayStr
-                    return (
-                      <div key={a.id}
-                           style={{
-                             background: isToday ? (dark ? 'rgba(139,92,246,0.08)' : 'rgba(139,92,246,0.04)') : T.card,
-                             border: `1px solid ${isToday ? `${PURPLE}35` : T.border}`,
-                             borderRadius: 16, boxShadow: sh, opacity: isPast ? 0.45 : 1,
-                           }}
-                           className="flex items-center gap-4 px-5 py-4">
-                        <div style={{ background: isToday ? `${PURPLE}20` : T.surface2, borderRadius: 12, padding: 10, flexShrink: 0 }}>
-                          <Calendar size={18} style={{ color: isToday ? PURPLE : T.muted }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          {isToday && <p style={{ color: PURPLE }} className="text-[10px] font-bold uppercase tracking-wider mb-0.5">Today · اليوم</p>}
-                          <p style={{ color: isPast ? T.muted : T.text }} className="text-sm font-medium truncate">{a.title}</p>
-                          <p style={{ color: T.muted }} className="text-[11px] mt-0.5">{a.date} · {a.time}</p>
-                        </div>
-                        {isToday && (
-                          <span style={{ color: PURPLE, background: `${PURPLE}18`, borderRadius: 8, fontSize: 10, fontWeight: 600, padding: '3px 10px' }}>Now</span>
-                        )}
+            {/* ─── SETTINGS ─── */}
+            {view === 'settings' && (
+              <div className="view-wrap">
+                <div className="two-col-grid">
+
+                  {/* Appointments */}
+                  <div className="card" style={{ overflow: 'hidden' }}>
+                    <div className="card-header" style={{ padding: '18px 22px', borderBottom: '1px solid #f3f4f6' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Calendar size={16} style={{ color: TEAL }} />
+                        <div className="card-title">Appointments</div>
+                        <span style={{ fontSize: 12, color: '#9CA3AF' }}>({upcomingAppts.length} upcoming)</span>
                       </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ─── HALL OF FAME VIEW ─── */}
-          {view === 'milestones' && (
-            <div className="space-y-7 max-w-[1100px]">
-              <div className="flex items-end justify-between">
-                <div>
-                  <p style={{ color: T.muted }} className="text-[10px] font-medium uppercase tracking-widest">Hall of Fame</p>
-                  <h2 style={{ color: T.text }} className="text-xl font-semibold mt-1">قاعة الأبطال</h2>
-                  <p style={{ color: T.muted }} className="text-xs mt-1">First wins &amp; milestones · الإنجازات الأولى</p>
-                </div>
-                <span style={{ color: T.muted }} className="text-sm">{milestones.length} win{milestones.length !== 1 ? 's' : ''}</span>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-7">
-                <div className="lg:col-span-2">
-                  {mlsLoading ? (
-                    <div className="grid grid-cols-2 gap-4 animate-pulse">
-                      {[1,2,3,4].map(i => <div key={i} style={{ background: T.card, height: 120, borderRadius: 20 }} />)}
                     </div>
-                  ) : milestones.length === 0 ? (
-                    <div style={{ background: T.card, border: `2px dashed ${T.border}`, borderRadius: 24 }}
-                         className="flex flex-col items-center justify-center gap-3 py-20">
-                      <Trophy size={32} style={{ color: T.muted }} />
-                      <p style={{ color: T.muted }} className="text-sm">No wins yet · لا إنجازات بعد</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-4">
-                      {milestones.map((m, i) => (
-                        <div key={m.id}
-                             style={{ background: T.card, border: `1px solid ${i % 2 === 0 ? `${ORANGE}25` : `${PURPLE}25`}`, boxShadow: sh, borderRadius: 20 }}
-                             className="p-5 transition-all hover:scale-[1.01]">
-                          <div className="flex items-start justify-between mb-3">
-                            <div style={{ background: i % 2 === 0 ? `${ORANGE}18` : `${PURPLE}18`, borderRadius: 12, padding: 9 }}>
-                              <Trophy size={16} style={{ color: i % 2 === 0 ? ORANGE : PURPLE }} />
+                    <div style={{ padding: '16px 22px' }}>
+                      <form onSubmit={handleAddAppt} style={{ display: 'grid', gridTemplateColumns: '1fr 140px 120px auto', gap: 10, marginBottom: 16, alignItems: 'flex-end' }}>
+                        <FInput label="Title" placeholder="Meeting…" value={apptTitle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApptTitle(e.target.value)} required />
+                        <FInput label="Date" type="date" value={apptDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApptDate(e.target.value)} required />
+                        <FInput label="Time" type="time" value={apptTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApptTime(e.target.value)} required />
+                        <button type="submit" disabled={apptBusy} className="primary-btn" style={{ height: 38, padding: '0 16px' }}>
+                          {apptBusy ? '…' : 'Add'}
+                        </button>
+                      </form>
+                      {apptsLoading ? <p className="card-sub">Loading…</p> : appts.length === 0 ? (
+                        <p className="card-sub">No appointments yet.</p>
+                      ) : appts.map((a, i) => {
+                        const isToday = a.date === todayStr
+                        const isPast  = a.date < todayStr
+                        return (
+                          <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderBottom: i < appts.length - 1 ? '1px solid #f3f4f6' : 'none', opacity: isPast ? 0.4 : 1 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: isToday ? TEAL : isPast ? '#D1D5DB' : '#3B82F6', flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              {isToday && <span style={{ fontSize: 10, fontWeight: 700, color: TEAL, display: 'block', marginBottom: 1 }}>TODAY</span>}
+                              <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: '#111827' }}>{a.title}</p>
                             </div>
-                            <span style={{ color: T.muted }} className="font-mono text-[10px]">{m.date ? fmtDate(m.date) : ''}</span>
+                            <span style={{ fontSize: 12, color: '#9CA3AF' }}>{a.date} · {a.time}</span>
                           </div>
-                          <p style={{ color: T.text }} className="text-sm font-semibold leading-snug mb-2">{m.title}</p>
-                          <span style={{ color: i % 2 === 0 ? ORANGE : PURPLE, background: i % 2 === 0 ? `${ORANGE}12` : `${PURPLE}12`, borderRadius: 8, fontSize: 10, fontWeight: 600, padding: '3px 8px' }}>
-                            {m.successTag}
-                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Hall of Fame */}
+                  <div className="card" style={{ overflow: 'hidden' }}>
+                    <div className="card-header" style={{ padding: '18px 22px', borderBottom: '1px solid #f3f4f6' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Trophy size={16} style={{ color: '#F59E0B' }} />
+                        <div className="card-title">Hall of Fame</div>
+                        <span style={{ fontSize: 12, color: '#9CA3AF' }}>({milestones.length} wins)</span>
+                      </div>
+                    </div>
+                    <div style={{ padding: '16px 22px' }}>
+                      <form onSubmit={handleAddMilestone} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                        <FInput label="Achievement" placeholder="What did you win?" value={mlsTitle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMlsTitle(e.target.value)} required />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          <FInput label="Date" type="date" value={mlsDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMlsDate(e.target.value)} required />
+                          <FInput label="Tag" placeholder="e.g. First Sale" value={mlsTag} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMlsTag(e.target.value)} />
+                        </div>
+                        <button type="submit" disabled={mlsBusy} className="primary-btn" style={{ background: '#F59E0B' }}>
+                          {mlsBusy ? 'Saving…' : '🏆 Log Win'}
+                        </button>
+                      </form>
+                      {mlsLoading ? <p className="card-sub">Loading…</p> : milestones.length === 0 ? (
+                        <p className="card-sub">No wins logged yet.</p>
+                      ) : milestones.map((m, i) => (
+                        <div key={m.id} style={{ padding: '10px 0', borderBottom: i < milestones.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{m.title}</span>
+                            <span style={{ fontSize: 11, color: '#9CA3AF' }}>{m.date ? fmtDate(m.date) : ''}</span>
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 500, color: '#D97706', background: '#fef3c7', padding: '2px 8px', borderRadius: 20 }}>{m.successTag}</span>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                <div>
-                  <div style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: sh, borderRadius: 20 }} className="p-6">
-                    <div className="flex items-center gap-2 mb-5">
-                      <Trophy size={16} style={{ color: ORANGE }} />
-                      <p style={{ color: T.text }} className="text-sm font-semibold">Log a Win · سجّل إنجازاً</p>
+                  {/* App info */}
+                  <div className="card" style={{ padding: '20px 22px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                      <Clock size={15} style={{ color: TEAL }} />
+                      <div className="card-title">App Info</div>
                     </div>
-                    <form onSubmit={handleAddMilestone} className="space-y-3">
-                      <GInput T={T} label="Achievement" placeholder="What did you achieve?…" value={mlsTitle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMlsTitle(e.target.value)} required />
-                      <GInput T={T} label="Date" type="date" value={mlsDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMlsDate(e.target.value)} required />
-                      <GInput T={T} label="Tag" placeholder="e.g. First Sale…" value={mlsTag} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMlsTag(e.target.value)} />
-                      <button type="submit" disabled={mlsBusy}
-                        style={{ background: `linear-gradient(135deg, ${ORANGE}, #D97706)`, borderRadius: 12, color: '#fff', width: '100%', padding: '10px', fontSize: 13, fontWeight: 600, opacity: mlsBusy ? 0.5 : 1, cursor: mlsBusy ? 'not-allowed' : 'pointer' }}
-                        className="transition-all hover:opacity-90 active:scale-[0.98] mt-2">
-                        {mlsBusy ? 'Saving…' : '🏆 Add to Hall of Fame'}
-                      </button>
-                    </form>
+                    <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 2 }}>
+                      <div><strong style={{ color: '#374151' }}>Version:</strong> M-Insight Pro</div>
+                      <div><strong style={{ color: '#374151' }}>Transactions:</strong> {finances.length}</div>
+                      <div><strong style={{ color: '#374151' }}>Tasks tracked:</strong> {tasks.length}</div>
+                      <div><strong style={{ color: '#374151' }}>Projects:</strong> {deposits.length}</div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-        </main>
-      </div>
+            )}
 
+          </div>{/* /page-body */}
+        </div>{/* /main-wrap */}
+      </div>{/* /app-shell */}
+
+      {/* ═══════════ STYLES ═══════════ */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600&family=Cairo:wght@300;400;600&display=swap');
-        * { box-sizing: border-box; }
-        body { margin: 0; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        /* ── layout ── */
+        .app-shell   { display:flex; height:100vh; overflow:hidden; background:#f4f7fe; font-family:'Inter',-apple-system,sans-serif; }
+        .sidebar     { width:220px; min-width:220px; background:#fff; border-right:1px solid #e9ecef; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+        .main-wrap   { flex:1; display:flex; flex-direction:column; height:100vh; overflow:hidden; min-width:0; }
+        .top-bar     { height:58px; min-height:58px; background:#fff; border-bottom:1px solid #e9ecef; display:flex; align-items:center; justify-content:space-between; padding:0 28px; }
+        .page-body   { flex:1; overflow-y:auto; padding:24px 28px 40px; }
+        .view-wrap   { max-width:1200px; margin:0 auto; display:flex; flex-direction:column; gap:20px; }
+
+        /* ── sidebar ── */
+        .sb-brand       { display:flex; align-items:center; gap:11px; padding:22px 20px 16px; }
+        .sb-logo        { width:34px; height:34px; background:${TEAL}; border-radius:9px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px; font-weight:700; flex-shrink:0; }
+        .sb-name        { font-size:14px; font-weight:700; color:#111827; line-height:1; }
+        .sb-sub         { font-size:10px; color:#9CA3AF; margin-top:2px; }
+        .sb-divider     { height:1px; background:#f3f4f6; margin:0 16px; }
+        .sb-section-label { font-size:10px; font-weight:700; color:#9CA3AF; letter-spacing:0.08em; padding:12px 20px 6px; }
+        .sb-nav         { padding:4px 10px; }
+        .sb-item        { display:flex; align-items:center; gap:10px; width:100%; padding:9px 12px; border:none; border-radius:10px; cursor:pointer; margin-bottom:2px; font-size:13px; font-weight:500; color:#6B7280; background:transparent; text-align:left; transition:background 0.12s,color 0.12s; border-left:3px solid transparent; }
+        .sb-item:hover  { background:#f9fafb; color:#374151; }
+        .sb-item--active{ background:rgba(10,182,139,0.09)!important; color:${TEAL}!important; border-left-color:${TEAL}!important; font-weight:600; }
+        .sb-spacer      { flex:1; }
+        .sb-logout      { margin:0 10px 18px; color:#9CA3AF; }
+        .sb-logout:hover{ color:#EF4444!important; background:rgba(239,68,68,0.06)!important; }
+
+        /* ── top bar ── */
+        .top-title    { font-size:17px; font-weight:700; color:#111827; margin:0; }
+        .top-bar-left { display:flex; align-items:center; gap:12px; }
+        .top-bar-right{ display:flex; align-items:center; gap:14px; }
+        .top-date     { font-size:12px; color:#9CA3AF; }
+        .top-bell     { background:#f4f7fe; border:none; cursor:pointer; width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:#6B7280; }
+        .top-avatar   { width:34px; height:34px; border-radius:9px; background:${TEAL}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; cursor:pointer; }
+
+        /* ── cards ── */
+        .card         { background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.05),0 1px 2px rgba(0,0,0,0.04); }
+        .card-header  { display:flex; align-items:flex-start; justify-content:space-between; padding:20px 22px 16px; }
+        .card-title   { font-size:14px; font-weight:700; color:#111827; }
+        .card-sub     { font-size:12px; color:#9CA3AF; margin-top:3px; }
+        .link-btn     { background:none; border:none; cursor:pointer; font-size:12px; color:${TEAL}; font-weight:600; padding:0; white-space:nowrap; }
+
+        /* ── stat cards ── */
+        .stats-row    { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+        .stat-card    { background:#fff; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.05),0 1px 2px rgba(0,0,0,0.04); padding:20px 20px; display:flex; align-items:flex-start; gap:14px; }
+        .stat-icon    { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .stat-body    { flex:1; min-width:0; }
+        .stat-label   { font-size:11px; font-weight:600; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px; }
+        .stat-value   { font-size:20px; font-weight:700; color:#111827; line-height:1.1; margin-bottom:4px; }
+        .stat-sub     { font-size:11px; font-weight:500; }
+
+        /* ── mid row (chart + tasks) ── */
+        .mid-row      { display:grid; grid-template-columns:3fr 2fr; gap:18px; }
+        .chart-card   { padding:22px 24px; }
+        .chart-body   { margin-top:8px; }
+        .chart-placeholder { height:200px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#9CA3AF; }
+        .chart-total  { text-align:right; }
+        .chart-total-val   { font-size:18px; font-weight:700; color:${TEAL}; display:block; }
+        .chart-total-trend { font-size:11px; font-weight:600; }
+
+        /* ── tasks card ── */
+        .tasks-card       { display:flex; flex-direction:column; overflow:hidden; }
+        .task-add-form    { display:flex; gap:8px; padding:12px 20px; border-bottom:1px solid #f3f4f6; border-top:1px solid #f3f4f6; flex-shrink:0; }
+        .task-input       { flex:1; background:#f9fafb; border:1px solid #e5e7eb; color:#111827; border-radius:9px; font-size:13px; padding:8px 12px; outline:none; font-family:inherit; }
+        .task-input:focus { border-color:${TEAL}; }
+        .task-input::placeholder { color:#9CA3AF; }
+        .task-add-btn     { width:34px; height:34px; background:${TEAL}; border:none; border-radius:9px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .task-list        { flex:1; overflow-y:auto; max-height:280px; }
+        .task-empty       { text-align:center; color:#9CA3AF; font-size:13px; padding:24px; }
+        .task-row         { display:flex; align-items:center; gap:10px; width:100%; padding:11px 20px; background:none; border:none; border-bottom:1px solid #f9fafb; cursor:pointer; text-align:left; transition:background 0.1s; }
+        .task-row:hover   { background:#fafafa; }
+        .task-row--full   { padding:13px 22px; }
+        .task-row--done   { opacity:0.5; }
+        .task-circle      { width:16px; height:16px; border-radius:50%; border:2px solid #D1D5DB; flex-shrink:0; }
+        .task-text        { flex:1; font-size:13px; color:#111827; line-height:1.4; }
+        .task-text--done  { text-decoration:line-through; color:#9CA3AF; }
+        .task-badge       { font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; flex-shrink:0; }
+        .task-badge--pending { color:#D97706; background:#fef3c7; }
+        .task-badge--done    { color:${TEAL}; background:#d1fae5; }
+        .task-footer      { display:flex; align-items:center; gap:10px; padding:10px 20px; border-top:1px solid #f3f4f6; font-size:11px; color:#9CA3AF; flex-shrink:0; }
+        .task-progress    { flex:1; height:4px; background:#f3f4f6; border-radius:2px; overflow:hidden; }
+        .task-progress-fill { height:100%; background:${TEAL}; border-radius:2px; transition:width 0.4s ease; }
+
+        /* ── projects ── */
+        .projects-card  { padding:22px 24px; }
+        .projects-grid  { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; }
+        .project-item   { border:1px solid #e9ecef; border-radius:12px; padding:14px; }
+        .project-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+        .project-name   { font-size:13px; font-weight:700; color:#111827; }
+        .project-sub    { font-size:11px; color:#9CA3AF; margin-top:2px; }
+        .project-badge  { font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; flex-shrink:0; }
+        .project-bar-track { height:5px; background:#f3f4f6; border-radius:3px; overflow:hidden; margin-bottom:8px; }
+        .project-bar-fill  { height:100%; border-radius:3px; }
+        .project-amounts   { display:flex; justify-content:space-between; font-size:11px; color:#9CA3AF; }
+
+        /* ── finances ── */
+        .two-col-grid  { display:grid; grid-template-columns:1fr 320px; gap:18px; }
+        .ledger-table  { width:100%; border-collapse:collapse; }
+        .ledger-table th { padding:10px 20px; text-align:left; font-size:11px; font-weight:600; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #f3f4f6; }
+        .ledger-table td { padding:11px 20px; font-size:13px; border-bottom:1px solid #fafafa; }
+        .table-empty   { padding:40px 20px; text-align:center; color:#9CA3AF; font-size:13px; }
+        .type-badge    { font-size:10px; font-weight:600; padding:2px 9px; border-radius:20px; }
+        .type-badge--income { color:#059669; background:#d1fae5; }
+        .type-badge--ads    { color:#DC2626; background:#fee2e2; }
+        .deposit-form  { display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:10px; align-items:flex-end; }
+
+        /* ── form inputs ── */
+        .finput-label  { display:block; font-size:11px; font-weight:600; color:#6B7280; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:5px; }
+        .finput        { background:#f9fafb; border:1px solid #e5e7eb; color:#111827; border-radius:9px; font-size:13px; padding:8px 11px; outline:none; font-family:inherit; width:100%; }
+        .finput:focus  { border-color:${TEAL}; }
+        .finput::placeholder { color:#9CA3AF; }
+        .primary-btn   { background:${TEAL}; color:#fff; border:none; border-radius:9px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; white-space:nowrap; }
+        .primary-btn:disabled { opacity:0.6; cursor:not-allowed; }
+
+        /* ── error screen ── */
+        .err-screen { display:flex; min-height:100vh; align-items:center; justify-content:center; background:#f4f7fe; }
+        .err-card   { background:#fff; border-radius:16px; padding:32px; max-width:400px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.08); }
+        .err-title  { color:#EF4444; font-weight:700; font-size:15px; margin:0 0 8px; }
+        .err-msg    { color:#6B7280; font-size:13px; margin:0; }
+
+        /* ── misc ── */
         input[type="date"]::-webkit-calendar-picker-indicator,
-        input[type="time"]::-webkit-calendar-picker-indicator {
-          filter: ${dark ? 'invert(1) opacity(0.25)' : 'opacity(0.4)'};
-          cursor: pointer;
-        }
-        ::-webkit-scrollbar       { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${dark ? '#2A2A38' : '#D1D5DB'}; border-radius: 4px; }
+        input[type="time"]::-webkit-calendar-picker-indicator { opacity:0.4; cursor:pointer; }
+        select { appearance:none; cursor:pointer; }
+        button { font-family:'Inter',-apple-system,sans-serif; }
       `}</style>
-    </div>
+    </>
   )
 }
 
-// ── GInput ────────────────────────────────────────────────────────────────────
-interface GInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  T: { inputBg: string; border: string; text: string; muted: string }
-  label: string
-}
-function GInput({ T, label, ...props }: GInputProps) {
+// ── FInput ────────────────────────────────────────────────────────────────────
+interface FInputProps extends React.InputHTMLAttributes<HTMLInputElement> { label: string }
+function FInput({ label, ...props }: FInputProps) {
   return (
     <div>
-      <label style={{ color: T.muted }} className="block text-[10px] font-medium uppercase tracking-wider mb-1.5">{label}</label>
-      <input
-        {...props}
-        style={{ background: T.inputBg, border: `1px solid ${T.border}`, color: T.text, borderRadius: 10, fontSize: 13, padding: '8px 12px', width: '100%', outline: 'none', fontFamily: 'inherit' }}
-      />
+      <label className="finput-label">{label}</label>
+      <input {...props} className={`finput ${props.className ?? ''}`} />
     </div>
   )
 }
