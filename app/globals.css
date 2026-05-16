@@ -8,7 +8,7 @@ html, body {
   height: 100%;
   background: #f4f7fe;
   color: #111827;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: var(--font-cairo), var(--font-inter), 'Cairo', 'Inter', -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
