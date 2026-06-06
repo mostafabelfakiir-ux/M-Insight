@@ -6,7 +6,7 @@
     "domain": "ayoubfattami.com",
     "email": "fattamiayoub@gmail.com",
     "dateFound": "2026-06-06T17:42:00.000Z",
-    "status": "new"
+    "status": "sent"
   },
   {
     "title": "Mohamed Abidar - Développeur Web Freelance",
@@ -15,7 +15,7 @@
     "domain": "mohamedabidar.com",
     "email": "mohamed.abidaar@gmail.com",
     "dateFound": "2026-06-06T17:42:00.000Z",
-    "status": "new"
+    "status": "sent"
   },
   {
     "title": "Abdelaziz Elhathout - Développeur Next.js & Laravel",
@@ -24,7 +24,7 @@
     "domain": "abdelaziz-elhathout.com",
     "email": "abdelaziz.e.perso@gmail.com",
     "dateFound": "2026-06-06T17:42:00.000Z",
-    "status": "new"
+    "status": "sent"
   },
   {
     "title": "Asmaa El Mountassir - Webdesigner & WordPress",
@@ -33,7 +33,7 @@
     "domain": "asmaacreation.com",
     "email": "ing.asmaa@gmail.com",
     "dateFound": "2026-06-06T17:42:00.000Z",
-    "status": "new"
+    "status": "sent"
   },
   {
     "title": "Mohamed Halhouli - Infographiste & Développeur",
@@ -42,7 +42,7 @@
     "domain": "halhouli.com",
     "email": "infographiste.mohamed@gmail.com",
     "dateFound": "2026-06-06T17:42:00.000Z",
-    "status": "new"
+    "status": "sent"
   },
   {
     "title": "Said Mezgani - Full Stack Developer",
@@ -51,7 +51,7 @@
     "domain": "portfoler.com",
     "email": "mezgani.said@gmail.com",
     "dateFound": "2026-06-06T17:42:00.000Z",
-    "status": "new"
+    "status": "drafted"
   },
   {
     "title": "Hicham Tech - Consultant & Full-Stack",
@@ -60,7 +60,7 @@
     "domain": "hicham.tech",
     "email": "contact@hicham.tech",
     "dateFound": "2026-06-06T17:42:00.000Z",
-    "status": "new"
+    "status": "drafted"
   },
   {
     "title": "Nsayblik - Agence Freelance Web",
@@ -69,7 +69,7 @@
     "domain": "nsayblik.ma",
     "email": "contact@nsayblik.com",
     "dateFound": "2026-06-06T17:42:00.000Z",
-    "status": "new"
+    "status": "drafted"
   },
   {
     "title": "Amine Freelance - Développeur Web",
@@ -78,6 +78,87 @@
     "domain": "amine.ma",
     "email": "contact@amine.ma",
     "dateFound": "2026-06-06T17:42:00.000Z",
-    "status": "new"
+    "status": "drafted"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.freelancer.ma/",
+    "snippet": "",
+    "domain": "www.freelancer.ma",
+    "email": null,
+    "dateFound": "2026-06-06T16:46:07.290Z",
+    "status": "drafted"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.freelancer.ma/missions",
+    "snippet": "",
+    "domain": "www.freelancer.ma",
+    "email": null,
+    "dateFound": "2026-06-06T16:46:07.290Z",
+    "status": "drafted"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.freelanceur.ma/",
+    "snippet": "",
+    "domain": "www.freelanceur.ma",
+    "email": null,
+    "dateFound": "2026-06-06T16:46:07.290Z",
+    "status": "drafted"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.workiin.ma/",
+    "snippet": "",
+    "domain": "www.workiin.ma",
+    "email": null,
+    "dateFound": "2026-06-06T16:46:07.290Z",
+    "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.missions-freelance.ma/",
+    "snippet": "",
+    "domain": "www.missions-freelance.ma",
+    "email": null,
+    "dateFound": "2026-06-06T16:46:07.290Z",
+    "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.jobbers.ma/",
+    "snippet": "",
+    "domain": "www.jobbers.ma",
+    "email": null,
+    "dateFound": "2026-06-06T16:46:07.290Z",
+    "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.jobbers.ma/a-propos-de-jobbers-ma/",
+    "snippet": "",
+    "domain": "www.jobbers.ma",
+    "email": null,
+    "dateFound": "2026-06-06T16:46:07.290Z",
+    "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.joblance.ma/",
+    "snippet": "",
+    "domain": "www.joblance.ma",
+    "email": null,
+    "dateFound": "2026-06-06T16:46:07.290Z",
+    "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.professionnels.ma/missions-freelance",
+    "snippet": "",
+    "domain": "www.professionnels.ma",
+    "email": null,
+    "dateFound": "2026-06-06T16:46:07.290Z",
+    "status": "drafted"
   }
 ]
