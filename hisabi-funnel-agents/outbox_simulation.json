@@ -562,5 +562,41 @@
       "success": true,
       "id": "34cecb58-8083-4855-b845-557b2153cfe0"
     }
+  },
+  {
+    "leadUrl": "https://www.joblance.ma/",
+    "targetEmail": "contact@www.joblance.ma",
+    "subject": "تبسيط فواتير وحسابات عملك الحر (توفير 5 ساعات أسبوعياً) 🇲🇦",
+    "body": "أهلاً بك،\n\nأغلب المستقلين وأصحاب المشاريع فالمغرب كيضيعو ما بين 15% حتى 20% من وقتهم فالمتابعة الإدارية وتتبع دفعات الكليان (شكون خلص، شكون عطى Avance وشكون باقي يسالنا). هاد تشتت الحسابات كيخليك تخسر فلوس ووقت بلا ما تحس.\n\nلهذا قمنا ببناء **Hisabi** (https://myhisabi.com)؛ الحل المالي المغربي الأسهل لإدارة الدخل والمصاريف والمهام فبلاصة وحدة بلا تعقيد جداول إكسيل.\n\n**العرض ديالنا ليك:**\nتفعيل تجريبي مجاني 100% لمدة 3 أيام بدون أي التزام أو بطاقة بنكية. تقدر تسجل الحساب ديالك مباشرة فـ https://myhisabi.com/login وتبدا التجربة، أو رد على هاد الإيميل بـ \"نعم\" وغنكلفو بإنشاء حسابك وتفعيله ليك فوراً.\n\nتحياتي،\nمصطفى بلفقير\nمؤسس Hisabi",
+    "sentAt": "2026-06-06T12:26:08.233Z",
+    "status": "drafted",
+    "result": {
+      "success": false,
+      "error": "{\"statusCode\":403,\"message\":\"The gmail.com domain is not verified. Please, add and verify your domain on https://resend.com/domains\",\"name\":\"validation_error\"}"
+    }
+  },
+  {
+    "leadUrl": "https://www.onejob.ma/offres-emploi/freelance",
+    "targetEmail": "contact@www.onejob.ma",
+    "subject": "تبسيط فواتير وحسابات عملك الحر (توفير 5 ساعات أسبوعياً) 🇲🇦",
+    "body": "أهلاً بك،\n\nأغلب المستقلين وأصحاب المشاريع فالمغرب كيضيعو ما بين 15% حتى 20% من وقتهم فالمتابعة الإدارية وتتبع دفعات الكليان (شكون خلص، شكون عطى Avance وشكون باقي يسالنا). هاد تشتت الحسابات كيخليك تخسر فلوس ووقت بلا ما تحس.\n\nلهذا قمنا ببناء **Hisabi** (https://myhisabi.com)؛ الحل المالي المغربي الأسهل لإدارة الدخل والمصاريف والمهام فبلاصة وحدة بلا تعقيد جداول إكسيل.\n\n**العرض ديالنا ليك:**\nتفعيل تجريبي مجاني 100% لمدة 3 أيام بدون أي التزام أو بطاقة بنكية. تقدر تسجل الحساب ديالك مباشرة فـ https://myhisabi.com/login وتبدا التجربة، أو رد على هاد الإيميل بـ \"نعم\" وغنكلفو بإنشاء حسابك وتفعيله ليك فوراً.\n\nتحياتي،\nمصطفى بلفقير\nمؤسس Hisabi",
+    "sentAt": "2026-06-06T12:26:08.383Z",
+    "status": "drafted",
+    "result": {
+      "success": false,
+      "error": "{\"statusCode\":403,\"message\":\"The gmail.com domain is not verified. Please, add and verify your domain on https://resend.com/domains\",\"name\":\"validation_error\"}"
+    }
+  },
+  {
+    "leadUrl": "https://fido.ma/fr/guide/travailler-freelance/",
+    "targetEmail": "contact@fido.ma",
+    "subject": "تبسيط فواتير وحسابات عملك الحر (توفير 5 ساعات أسبوعياً) 🇲🇦",
+    "body": "أهلاً بك،\n\nأغلب المستقلين وأصحاب المشاريع فالمغرب كيضيعو ما بين 15% حتى 20% من وقتهم فالمتابعة الإدارية وتتبع دفعات الكليان (شكون خلص، شكون عطى Avance وشكون باقي يسالنا). هاد تشتت الحسابات كيخليك تخسر فلوس ووقت بلا ما تحس.\n\nلهذا قمنا ببناء **Hisabi** (https://myhisabi.com)؛ الحل المالي المغربي الأسهل لإدارة الدخل والمصاريف والمهام فبلاصة وحدة بلا تعقيد جداول إكسيل.\n\n**العرض ديالنا ليك:**\nتفعيل تجريبي مجاني 100% لمدة 3 أيام بدون أي التزام أو بطاقة بنكية. تقدر تسجل الحساب ديالك مباشرة فـ https://myhisabi.com/login وتبدا التجربة، أو رد على هاد الإيميل بـ \"نعم\" وغنكلفو بإنشاء حسابك وتفعيله ليك فوراً.\n\nتحياتي،\nمصطفى بلفقير\nمؤسس Hisabi",
+    "sentAt": "2026-06-06T12:26:08.574Z",
+    "status": "drafted",
+    "result": {
+      "success": false,
+      "error": "{\"statusCode\":403,\"message\":\"The gmail.com domain is not verified. Please, add and verify your domain on https://resend.com/domains\",\"name\":\"validation_error\"}"
+    }
   }
 ]
