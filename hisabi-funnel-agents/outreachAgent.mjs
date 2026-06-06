@@ -187,6 +187,9 @@ export async function runOutreach() {
     results.push(outboxItem);
 
     lead.status = sendResult.success ? 'sent' : 'drafted';
+
+    // Add 2-second delay to avoid Resend API rate limits (5 reqs/sec)
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
   fs.writeFileSync(leadsFilePath, JSON.stringify(leads, null, 2), 'utf8');
