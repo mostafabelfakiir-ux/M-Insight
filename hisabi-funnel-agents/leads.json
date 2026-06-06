@@ -97,5 +97,14 @@
     "email": null,
     "dateFound": "2026-06-06T12:26:01.759Z",
     "status": "drafted"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.professionnels.ma/missions-freelance",
+    "snippet": "",
+    "domain": "www.professionnels.ma",
+    "email": null,
+    "dateFound": "2026-06-06T16:06:23.554Z",
+    "status": "sent"
   }
 ]

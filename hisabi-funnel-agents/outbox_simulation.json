@@ -598,5 +598,17 @@
       "success": false,
       "error": "{\"statusCode\":403,\"message\":\"The gmail.com domain is not verified. Please, add and verify your domain on https://resend.com/domains\",\"name\":\"validation_error\"}"
     }
+  },
+  {
+    "leadUrl": "https://www.professionnels.ma/missions-freelance",
+    "targetEmail": "contact@www.professionnels.ma",
+    "subject": "تبسيط فواتير وحسابات عملك الحر (توفير 5 ساعات أسبوعياً) 🇲🇦",
+    "body": "أهلاً بك،\n\nأغلب المستقلين وأصحاب المشاريع فالمغرب كيضيعو ما بين 15% حتى 20% من وقتهم فالمتابعة الإدارية وتتبع دفعات الكليان (شكون خلص، شكون عطى Avance وشكون باقي يسالنا). هاد تشتت الحسابات كيخليك تخسر فلوس ووقت بلا ما تحس.\n\nلهذا قمنا ببناء **Hisabi** (https://myhisabi.com)؛ الحل المالي المغربي الأسهل لإدارة الدخل والمصاريف والمهام فبلاصة وحدة بلا تعقيد جداول إكسيل.\n\n**العرض ديالنا ليك:**\nتفعيل تجريبي مجاني 100% لمدة 3 أيام بدون أي التزام أو بطاقة بنكية. تقدر تسجل الحساب ديالك مباشرة فـ https://myhisabi.com/login وتبدا التجربة، أو رد على هاد الإيميل بـ \"نعم\" وغنكلفو بإنشاء حسابك وتفعيله ليك فوراً.\n\nتحياتي،\nمصطفى بلفقير\nمؤسس Hisabi",
+    "sentAt": "2026-06-06T16:06:32.565Z",
+    "status": "sent",
+    "result": {
+      "success": true,
+      "id": "6eb5d709-7953-4ca9-920f-cdf9e0b60b2f"
+    }
   }
 ]
