@@ -1,0 +1,57 @@
+name: Hisabi Outreach Agents
+
+on:
+  schedule:
+    # Runs everyday at 10:00 AM UTC (11:00 AM Moroccan time)
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+    # Allows manual trigger from GitHub UI
+
+jobs:
+  run-agents:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      - name: Run Lead Finder Agent
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          CIH_RIB: ${{ secrets.CIH_RIB }}
+          CIH_NAME: ${{ secrets.CIH_NAME }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+        run: |
+          node hisabi-funnel-agents/leadFinder.mjs
+
+      - name: Run Outreach Agent
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          CIH_RIB: ${{ secrets.CIH_RIB }}
+          CIH_NAME: ${{ secrets.CIH_NAME }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+        run: |
+          node hisabi-funnel-agents/outreachAgent.mjs
+
+      - name: Commit and Push database updates
+        run: |
+          git config --global user.name "Hisabi Outreach Agent"
+          git config --global user.email "agents@myhisabi.com"
+          git add hisabi-funnel-agents/*.json
+          # Only commit if there are changes to avoid workflow errors
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 Update leads database and outbox logs [skip ci]" && git push)
