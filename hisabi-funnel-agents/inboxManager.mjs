@@ -124,10 +124,15 @@ async function runRealImap() {
     let lock = await client.getMailboxLock('INBOX');
 
     try {
-      // Search for unseen messages
-      for await (let message of client.list({ unseen: true })) {
-        const source = await client.download(message.uid);
-        const parsed = await simpleParser(source);
+      await client.mailboxOpen('INBOX');
+      const uids = await client.search({ unseen: true });
+      console.log(`🔍 Found ${uids.length} unseen messages in Inbox.`);
+
+      for (const uid of uids) {
+        const message = await client.fetchOne(uid, { source: true });
+        if (!message || !message.source) continue;
+
+        const parsed = await simpleParser(message.source);
         
         const fromAddress = parsed.from?.value[0]?.address?.toLowerCase();
         const bodyText = (parsed.text || "").toLowerCase();
@@ -135,17 +140,14 @@ async function runRealImap() {
 
         console.log(`📩 Received unseen email from: ${fromAddress}`);
 
-        // Check if the sender is one of our leads
         const isTargetLead = targetEmails.some(email => fromAddress && (fromAddress.includes(email) || email.includes(fromAddress)));
         
         if (isTargetLead) {
-          // Check for positive reply keywords
           const isPositive = POSITIVE_KEYWORDS.some(kw => bodyText.includes(kw) || subjectText.includes(kw));
 
           if (isPositive) {
             console.log(`🎯 Lead replied positively: "${parsed.subject}"`);
             
-            // Check if we already sent them the RIB
             const alreadySent = paymentInstructions.some(p => p.leadEmail.toLowerCase() === fromAddress);
 
             if (!alreadySent) {
@@ -165,8 +167,7 @@ async function runRealImap() {
                 result: sendResult
               });
 
-              // Mark message as seen
-              await client.messageFlagsAdd({ uid: message.uid }, ['\\Seen']);
+              await client.messageFlagsAdd({ uid }, ['\\Seen']);
             }
           }
         }
@@ -176,10 +177,13 @@ async function runRealImap() {
     }
 
     fs.writeFileSync(paymentFilePath, JSON.stringify(paymentInstructions, null, 2), 'utf8');
-    await client.logout();
-    console.log('🔌 IMAP Process complete.');
   } catch (error) {
     console.error('❌ IMAP Error:', error.message);
+  } finally {
+    try {
+      await client.logout();
+    } catch (e) {}
+    console.log('🔌 IMAP Process complete.');
   }
 }
 
