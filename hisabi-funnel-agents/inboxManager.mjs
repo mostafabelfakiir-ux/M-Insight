@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import { ImapFlow } from 'imapflow';
+import { simpleParser } from 'mailparser';
 
 // Support running from root or from within this folder
 const currentDir = import.meta.dirname || path.dirname(new URL(import.meta.url).pathname);
@@ -15,11 +17,15 @@ const ACCOUNT_NAME = process.env.CIH_NAME || 'Mostafa OS (Hisabi)';
 const SENDER_EMAIL = process.env.SENDER_EMAIL || 'contact@myhisabi.com';
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
-const MOCK_REPLIES = [
-  "أنا مهتم، كيفاش نقدر نخلص؟",
-  "Bonjour, je suis intéressé par votre plateforme. Comment s'abonner ?",
-  "سلام، واش كاين شي تجريب مجاني ولا نخلص نيشان؟ صيفط ليا RIB",
-  "Fin bghit nkhles?"
+// IMAP Config for real client reply tracking
+const IMAP_HOST = process.env.IMAP_HOST;
+const IMAP_PORT = parseInt(process.env.IMAP_PORT || '993', 10);
+const IMAP_USER = process.env.IMAP_USER;
+const IMAP_PASSWORD = process.env.IMAP_PASSWORD;
+
+const POSITIVE_KEYWORDS = [
+  'خلص', 'مهتم', 'كيفاش', 'virement', 'rib', 'pay', 'interess', 'abonner', 'tarifs',
+  'bghit', 'nkhles', 'fin', 'tman', 'prix', 'details', 'compte', 'bank', 'cih'
 ];
 
 function generatePaymentEmail(leadName) {
@@ -50,7 +56,7 @@ https://myhisabi.com`
 
 async function sendEmail(to, subject, htmlBody) {
   if (!RESEND_API_KEY) {
-    console.log(`[SIMULATION] Payment details email not sent to ${to} (No RESEND_API_KEY). Draft Saved.`);
+    console.log(`[SIMULATION] Payment details email not sent to ${to} (No RESEND_API_KEY).`);
     return { success: false, simulated: true };
   }
 
@@ -82,7 +88,105 @@ async function sendEmail(to, subject, htmlBody) {
   }
 }
 
-export async function runInboxManager() {
+// 1. REAL IMAP RUN
+async function runRealImap() {
+  console.log(`🔌 Connecting to IMAP server: ${IMAP_HOST}:${IMAP_PORT}...`);
+  
+  const client = new ImapFlow({
+    host: IMAP_HOST,
+    port: IMAP_PORT,
+    secure: true,
+    auth: {
+      user: IMAP_USER,
+      pass: IMAP_PASSWORD
+    },
+    logger: false
+  });
+
+  const outboxFilePath = path.join(currentDir, 'outbox_simulation.json');
+  const paymentFilePath = path.join(currentDir, 'payment_instructions_sent.json');
+
+  if (!fs.existsSync(outboxFilePath)) {
+    console.log('⚠️ No outbox history found to match clients.');
+    return;
+  }
+
+  const outbox = JSON.parse(fs.readFileSync(outboxFilePath, 'utf8'));
+  const targetEmails = outbox.map(e => e.targetEmail.toLowerCase());
+
+  let paymentInstructions = [];
+  if (fs.existsSync(paymentFilePath)) {
+    paymentInstructions = JSON.parse(fs.readFileSync(paymentFilePath, 'utf8'));
+  }
+
+  try {
+    await client.connect();
+    let lock = await client.getMailboxLock('INBOX');
+
+    try {
+      // Search for unseen messages
+      for await (let message of client.list({ unseen: true })) {
+        const source = await client.download(message.uid);
+        const parsed = await simpleParser(source);
+        
+        const fromAddress = parsed.from?.value[0]?.address?.toLowerCase();
+        const bodyText = (parsed.text || "").toLowerCase();
+        const subjectText = (parsed.subject || "").toLowerCase();
+
+        console.log(`📩 Received unseen email from: ${fromAddress}`);
+
+        // Check if the sender is one of our leads
+        const isTargetLead = targetEmails.some(email => fromAddress && (fromAddress.includes(email) || email.includes(fromAddress)));
+        
+        if (isTargetLead) {
+          // Check for positive reply keywords
+          const isPositive = POSITIVE_KEYWORDS.some(kw => bodyText.includes(kw) || subjectText.includes(kw));
+
+          if (isPositive) {
+            console.log(`🎯 Lead replied positively: "${parsed.subject}"`);
+            
+            // Check if we already sent them the RIB
+            const alreadySent = paymentInstructions.some(p => p.leadEmail.toLowerCase() === fromAddress);
+
+            if (!alreadySent) {
+              const name = parsed.from.value[0].name || fromAddress.split('@')[0];
+              const response = generatePaymentEmail(name);
+              
+              console.log(`✉️ Sending payment instructions to ${fromAddress}...`);
+              const sendResult = await sendEmail(fromAddress, response.subject, response.body);
+
+              paymentInstructions.push({
+                leadEmail: fromAddress,
+                inboundReply: parsed.text,
+                responseSubject: response.subject,
+                responseBody: response.body,
+                timestamp: new Date().toISOString(),
+                status: sendResult.success ? 'sent' : 'simulated',
+                result: sendResult
+              });
+
+              // Mark message as seen
+              await client.messageFlagsAdd({ uid: message.uid }, ['\\Seen']);
+            }
+          }
+        }
+      }
+    } finally {
+      lock.release();
+    }
+
+    fs.writeFileSync(paymentFilePath, JSON.stringify(paymentInstructions, null, 2), 'utf8');
+    await client.logout();
+    console.log('🔌 IMAP Process complete.');
+  } catch (error) {
+    console.error('❌ IMAP Error:', error.message);
+  }
+}
+
+// 2. SIMULATED RUN (Fallback if no IMAP credentials)
+async function runSimulation() {
+  console.log('⚠️ IMAP_HOST is not configured in .env.local. Running in SIMULATION mode...');
+  
   const outboxFilePath = path.join(currentDir, 'outbox_simulation.json');
   const paymentFilePath = path.join(currentDir, 'payment_instructions_sent.json');
 
@@ -104,25 +208,21 @@ export async function runInboxManager() {
     paymentInstructions = JSON.parse(fs.readFileSync(paymentFilePath, 'utf8'));
   }
 
-  console.log(`\n📬 Monitoring ${sentEmails.length} sent emails for replies...`);
+  const MOCK_REPLIES = [
+    "أنا مهتم، كيفاش نقدر نخلص؟",
+    "Bonjour, je suis intéressé par votre plateforme. Comment s'abonner ?",
+    "سلام، واش كاين شي تجريب مجاني ولا نخلص نيشان؟ صيفط ليا RIB",
+    "Fin bghit nkhles?"
+  ];
 
-  // Simulate receiving a reply from a random sent lead
   const luckyLead = sentEmails[Math.floor(Math.random() * sentEmails.length)];
   const mockReplyText = MOCK_REPLIES[Math.floor(Math.random() * MOCK_REPLIES.length)];
 
-  console.log(`\n📥 [NEW REPLY RECEIVED]`);
+  console.log(`\n📥 [SIMULATION] NEW REPLY RECEIVED`);
   console.log(`From: ${luckyLead.targetEmail}`);
-  console.log(`Subject: Re: ${luckyLead.subject}`);
   console.log(`Content: "${mockReplyText}"`);
 
   const response = generatePaymentEmail(luckyLead.targetEmail.split('@')[0]);
-  console.log(`\n✉️ [DRAFTING AUTOMATIC REPLY WITH CIH RIB]`);
-  console.log(`Subject: ${response.subject}`);
-  console.log(`RIB: ${RIB_NUMBER}`);
-  console.log(`-----------------------------------------------`);
-  console.log(response.body);
-  console.log(`-----------------------------------------------`);
-
   const sendResult = await sendEmail(luckyLead.targetEmail, response.subject, response.body);
 
   paymentInstructions.push({
@@ -136,9 +236,15 @@ export async function runInboxManager() {
   });
 
   fs.writeFileSync(paymentFilePath, JSON.stringify(paymentInstructions, null, 2), 'utf8');
-  console.log(`\n🎉 Process complete. Saved payment instructions log to ${paymentFilePath}`);
+  console.log(`\n🎉 Simulation process complete. Saved payment instructions log to ${paymentFilePath}`);
 }
 
-if (process.argv[1] && process.argv[1].endsWith('inboxManager.mjs')) {
-  runInboxManager();
+async function main() {
+  if (IMAP_HOST && IMAP_USER && IMAP_PASSWORD) {
+    await runRealImap();
+  } else {
+    await runSimulation();
+  }
 }
+
+main();
