@@ -160,5 +160,41 @@
     "email": null,
     "dateFound": "2026-06-06T16:46:07.290Z",
     "status": "drafted"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.freelancer.ma/projets",
+    "snippet": "",
+    "domain": "www.freelancer.ma",
+    "email": null,
+    "dateFound": "2026-06-07T11:47:36.514Z",
+    "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://amine.ma/fr",
+    "snippet": "",
+    "domain": "amine.ma",
+    "email": null,
+    "dateFound": "2026-06-07T11:47:36.514Z",
+    "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.onejob.ma/offres-emploi/freelance",
+    "snippet": "",
+    "domain": "www.onejob.ma",
+    "email": null,
+    "dateFound": "2026-06-07T11:47:36.514Z",
+    "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.weringroup.ma/offres-de-missions-freelance/",
+    "snippet": "",
+    "domain": "www.weringroup.ma",
+    "email": null,
+    "dateFound": "2026-06-07T11:47:36.514Z",
+    "status": "sent"
   }
 ]
