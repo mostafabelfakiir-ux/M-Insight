@@ -196,5 +196,14 @@
     "email": null,
     "dateFound": "2026-06-07T11:47:36.514Z",
     "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://fido.ma/fr/guide/travailler-freelance/",
+    "snippet": "",
+    "domain": "fido.ma",
+    "email": null,
+    "dateFound": "2026-06-09T12:36:33.000Z",
+    "status": "sent"
   }
 ]
