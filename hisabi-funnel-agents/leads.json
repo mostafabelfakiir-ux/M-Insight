@@ -277,5 +277,14 @@
     "email": null,
     "dateFound": "2026-07-17T11:20:07.548Z",
     "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.tekpro.ma/",
+    "snippet": "",
+    "domain": "www.tekpro.ma",
+    "email": null,
+    "dateFound": "2026-07-20T12:15:07.977Z",
+    "status": "sent"
   }
 ]
