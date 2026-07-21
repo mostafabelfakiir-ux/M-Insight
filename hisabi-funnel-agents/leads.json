@@ -286,5 +286,14 @@
     "email": null,
     "dateFound": "2026-07-20T12:15:07.977Z",
     "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.freelanceit.ma/",
+    "snippet": "",
+    "domain": "www.freelanceit.ma",
+    "email": null,
+    "dateFound": "2026-07-21T11:46:13.466Z",
+    "status": "sent"
   }
 ]
