@@ -295,5 +295,14 @@
     "email": null,
     "dateFound": "2026-07-21T11:46:13.466Z",
     "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.avito.ma/fr/maroc/freelance",
+    "snippet": "",
+    "domain": "www.avito.ma",
+    "email": null,
+    "dateFound": "2026-07-29T11:59:48.815Z",
+    "status": "sent"
   }
 ]
