@@ -367,5 +367,14 @@
     "email": null,
     "dateFound": "2026-09-05T13:15:15.290Z",
     "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.jobbers.ma/en/",
+    "snippet": "",
+    "domain": "www.jobbers.ma",
+    "email": null,
+    "dateFound": "2026-09-06T13:24:30.297Z",
+    "status": "sent"
   }
 ]
