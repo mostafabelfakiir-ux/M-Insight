@@ -385,5 +385,23 @@
     "email": null,
     "dateFound": "2026-09-11T14:04:06.531Z",
     "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.jobbers.ma/?searchtype=jobs",
+    "snippet": "",
+    "domain": "www.jobbers.ma",
+    "email": null,
+    "dateFound": "2026-09-19T13:41:38.512Z",
+    "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.lmoukawil.ma/fr/articles/annuaire-auto-entrepreneurs-maroc/",
+    "snippet": "",
+    "domain": "www.lmoukawil.ma",
+    "email": null,
+    "dateFound": "2026-09-19T13:41:45.445Z",
+    "status": "sent"
   }
 ]
