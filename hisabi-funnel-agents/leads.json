@@ -421,5 +421,23 @@
     "email": null,
     "dateFound": "2026-10-08T17:11:59.174Z",
     "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://taches.ma/",
+    "snippet": "",
+    "domain": "taches.ma",
+    "email": null,
+    "dateFound": "2026-10-09T16:48:53.148Z",
+    "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.freelancer.ma/index.php",
+    "snippet": "",
+    "domain": "www.freelancer.ma",
+    "email": null,
+    "dateFound": "2026-10-09T16:48:53.148Z",
+    "status": "sent"
   }
 ]
