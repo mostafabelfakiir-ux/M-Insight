@@ -448,5 +448,14 @@
     "email": null,
     "dateFound": "2026-10-14T14:53:14.293Z",
     "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.freelancer.ma/freelancers",
+    "snippet": "",
+    "domain": "www.freelancer.ma",
+    "email": null,
+    "dateFound": "2026-10-20T14:40:09.505Z",
+    "status": "sent"
   }
 ]
