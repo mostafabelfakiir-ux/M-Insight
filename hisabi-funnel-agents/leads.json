@@ -484,5 +484,23 @@
     "email": null,
     "dateFound": "2026-10-28T16:26:11.114Z",
     "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://zakariamahboub.ma/",
+    "snippet": "",
+    "domain": "zakariamahboub.ma",
+    "email": null,
+    "dateFound": "2026-10-31T15:37:18.020Z",
+    "status": "sent"
+  },
+  {
+    "title": "Unknown Title",
+    "url": "https://www.optioncarriere.ma/emploi-missions-freelance",
+    "snippet": "",
+    "domain": "www.optioncarriere.ma",
+    "email": null,
+    "dateFound": "2026-10-31T15:37:18.020Z",
+    "status": "sent"
   }
 ]
